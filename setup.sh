@@ -10,9 +10,9 @@ PG_ROOT_PASS=${POSTGRES_PASSWORD:-root_pass}
 KC_ADMIN=${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
 KC_PASS=${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
 
-echo "Limpando e reconstruindo ambiente SEAGRI com logs e confs visíveis..."
+echo "Limpando e reconstruindo ambiente SEAGRI..."
 
-# 1. Criar estrutura de diretórios
+# 1. Criar estrutura de diretórios no Host
 mkdir -p keycloak/logs keycloak/conf
 mkdir -p postgres/logs postgres/data postgres/conf
 
@@ -27,7 +27,7 @@ KC_BOOTSTRAP_ADMIN_USERNAME=$KC_ADMIN
 KC_BOOTSTRAP_ADMIN_PASSWORD=$KC_PASS
 EOF
 
-# 3. Criar script de inicialização do Postgres (Dinâmico)
+# 3. Criar script de inicialização do Postgres
 cat <<EOF > postgres/init-db.sh
 #!/bin/bash
 set -e
@@ -58,16 +58,18 @@ services:
       POSTGRES_PASSWORD: \${POSTGRES_PASSWORD}
     ports:
       - "5432:5432"
+    # O logging_collector agora aponta diretamente para a pasta mapeada
     command: >
       postgres
       -c logging_collector=on
       -c log_directory=/var/log/postgresql
       -c log_filename=postgresql.log
+      -c log_file_mode=0666
     volumes:
       - ./postgres/data:/var/lib/postgresql/data
       - ./postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
       - ./postgres/logs:/var/log/postgresql
-      - ./postgres/conf:/etc/postgresql
+      - ./postgres/conf:/etc/postgresql-custom
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres"]
       interval: 10s
@@ -98,14 +100,15 @@ services:
         condition: service_healthy
 EOF
 
-# 5. Ajuste de Permissões (Ubuntu/Linux)
-# 999: Postgres, 1000: Keycloak
-echo "Ajustando permissões de escrita para os containers..."
-sudo chown -R 999:999 postgres/data postgres/logs postgres/conf
-sudo chown -R 1000:1000 keycloak/logs keycloak/conf
-sudo chmod -R 775 postgres/logs keycloak/logs
+# 5. Ajuste de Permissões (A solução pelo lado do Host)
+echo "Ajustando permissões para os usuários internos do Docker..."
+# Aplicamos permissão de escrita para o grupo e outros nas pastas de logs e data
+# Isso permite que o usuário interno do Postgres (999) use a pasta sem erro de permissão
+sudo chmod -R 777 postgres/data postgres/logs postgres/conf
+sudo chmod -R 777 keycloak/logs keycloak/conf
 
-# 6. Configurar Git e .gitignore
+# 6. Configurar Git
+if [ ! -d ".git" ]; then git init; fi
 cat <<EOF > .gitignore
 .env
 */data/
@@ -113,8 +116,15 @@ cat <<EOF > .gitignore
 EOF
 
 echo "------------------------------------------------"
-echo "Setup concluído!"
-echo "IMPORTANTE: Para ver os arquivos de config agora pela primeira vez, execute:"
-echo "1. docker-compose up -d"
-echo "2. docker cp postgres_db:/var/lib/postgresql/data/postgresql.conf ./postgres/conf/"
-echo "3. docker cp keycloak_service:/opt/keycloak/conf/keycloak.conf ./keycloak/conf/"
+echo "Setup concluído! Agora execute: docker-compose up -d"
+echo "------------------------------------------------"
+echo ""
+echo "------------------------------------------------"
+echo "Aguarde 20 segundos até o sistema subir completamente e execute:"
+echo "------------------------------------------------"
+echo "# Extrair configuração do Postgres"
+echo "docker cp postgres_db:/var/lib/postgresql/data/postgresql.conf ./postgres/conf/"
+echo "docker cp postgres_db:/var/lib/postgresql/data/pg_hba.conf ./postgres/conf/"
+echo ""
+echo "# Extrair configuração do Keycloak"
+echo "docker cp keycloak_service:/opt/keycloak/conf/keycloak.conf ./keycloak/conf/"
