@@ -16,6 +16,22 @@ echo "Limpando e reconstruindo ambiente SEAGRI..."
 mkdir -p keycloak/logs keycloak/conf
 mkdir -p postgres/logs postgres/data postgres/conf
 
+# 1.1 Criar arquivo de configuração do Keycloak (NOVIDADE)
+# Isso permite que o Keycloak suba já configurado para logs em arquivo
+cat <<EOF > keycloak/conf/keycloak.conf
+# Configurações de Banco de Dados
+db=postgres
+db-url=jdbc:postgresql://postgres:5432/$PG_DB
+
+# Configurações de Log
+log=file
+log-file=/opt/keycloak/logs/keycloak.log
+
+# Configurações de HTTP/Rede
+http-enabled=true
+hostname-strict=false
+EOF
+
 # 2. Criar o arquivo .env
 cat <<EOF > .env
 DB_ADMIN_USER=$DB_USER
