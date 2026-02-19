@@ -1,25 +1,3 @@
-# --- Segurança ---
 .env
-*.pem
-*.key
-
-# --- Banco de Dados (Postgres) ---
-# Ignoramos os dados binários, mas mantemos os scripts e configs
-postgres/data/
-
-# --- Logs (Ambos os serviços) ---
-# Ignoramos os arquivos de log que crescem indefinidamente
-postgres/logs/*.log
-keycloak/logs/*.log
-
-# --- IDEs e Sistema ---
-.idea/
-.vscode/
-*.swp
-.DS_Store
-bin/
-build/
-target/
-
-# --- Docker ---
-.docker/
+*/data/
+*/logs/
