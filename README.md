@@ -1,16 +1,14 @@
-# SEAGRI - Infraestrutura de Identidade e Dados
+Markdown# 🛡️ SEAGRI - Infraestrutura de Identidade e Microserviços
 
-Este repositório contém o blueprint de arquitetura para a fundação de microserviços da SEAGRI. A solução utiliza **Keycloak** para Gestão de Identidade (IAM) e **PostgreSQL** como camada de persistência robusta, tudo orquestrado via Docker.
+Este repositório contém o blueprint de arquitetura para a fundação de microserviços da SEAGRI. A solução utiliza **Keycloak** para Gestão de Identidade (IAM) e **PostgreSQL** como camada de persistência, orquestrados via Docker, com foco em federação de dados **Stateless** (sem sincronismo) com o Active Directory do GDF.
 
 ## 🏗️ Arquitetura do Stack
 
-A infraestrutura foi desenhada seguindo princípios de isolamento de processos e persistência de dados:
+A infraestrutura foi desenhada seguindo princípios de isolamento e resiliência:
 
-* **Identity Provider:** Keycloak 26.0 (baseado em Quarkus) configurado em modo de desenvolvimento.
-* **Database:** PostgreSQL 16 (Alpine) com volumes segregados para dados e logs.
-* **Segurança:** Separação de roles entre Superusuário (postgres) e Usuário de Aplicação (keycloak_admin).
-
-
+* **Identity Provider:** Keycloak 26.0 (baseado em Quarkus).
+* **Database:** PostgreSQL 16 (Alpine) com volumes segregados.
+* **Federação:** Integração direta com o Catálogo Global do AD via protocolo LDAP.
 
 ---
 
@@ -18,157 +16,100 @@ A infraestrutura foi desenhada seguindo princípios de isolamento de processos e
 
 ### Pré-requisitos
 * Docker e Docker Compose instalados.
-* Portas `8080` e `5432` liberadas no host (Ubuntu).
+* Portas `8080` (Keycloak) e `5432` (Postgres) liberadas.
 
 ### Instalação e Execução
-1. Clone o repositório:
-   ```bash
-   git clone ffrazao_github:ffrazao/seagri.git
-   cd seagri
-   ```
-
-Execute o script de provisionamento (ele configurará permissões de pasta e credenciais):
-
-   ```bash
-   chmod +x setup.sh
-   ./setup.sh
-   ```
-
-Inicie o stack:
-
-   ```bash
-   docker-compose up -d
-   ```
-
-Acompanhe a subida dos serviços:
-
-   ```bash
-   docker-compose logs -f
-   ```
-
-🛠️ Detalhes Técnicos de Implementação
-Flexibilidade de Configuração
-Diferente de implementações estáticas, este projeto utiliza um Entrypoint Shell Script (init-db.sh) para o PostgreSQL. Isso permite que qualquer alteração no arquivo .env seja refletida dinamicamente no banco de dados durante a inicialização, sem a necessidade de recriar scripts manuais.
-
-Persistência e Monitoramento
-Dados: Persistidos em ./postgres/data.
-
-Logs: Mapeados para ./postgres/logs e ./keycloak/logs, facilitando a depuração externa sem entrar nos containers.
-
-Acesso Administrativo
-Keycloak Admin Console: http://localhost:8080/admin (Credenciais no .env)
-
-Database (DBeaver/psql): Host localhost, Porta 5432.
-
-🛡️ Segurança: Usuário Admin Temporário
-Ao acessar o Keycloak pela primeira vez, um aviso de segurança sobre "usuário temporário" será exibido.
-Recomendação: Crie um novo usuário administrativo através do painel Users e atribua a Realm Role admin a ele para desativar o bootstrap inicial.
-
-GUIA LDAP E AFINS
-
-## 📋 Parte 1: Descoberta de Infraestrutura (Ubuntu/Linux)
-
-O objetivo desta etapa é identificar os parâmetros do Active Directory (AD) sem depender de documentação prévia.
-
-### 1.1 Localização do Domínio e Servidores
-O servidor de rede (DHCP) sempre envia o domínio para o cliente. Use o `nmcli` para extraí-lo:
-
-```bash
-# Identifica o domínio oficial da rede
-nmcli dev show | grep "DOMAIN\|DNS"
-
-```
-
-* **Esperado:** O campo `IP4.DOMAIN` revelará o IP (ex: ` 10.194.250.111`).
-
-### 1.2 Identificação dos Domain Controllers (DCs)
-
-Consulte o DNS para listar os servidores que prestam serviço LDAP no domínio encontrado:
-
-```bash
-# Lista os servidores e portas
-dig -t SRV _ldap._tcp.governo.gdfnet.df
-
-```
-
-### 1.3 Validação do Catálogo Global (Porta 3268)
-
-Para autenticação em larga escala (múltiplos órgãos), confirme se o Catálogo Global está acessível:
-
-```bash
-# Valida se a porta 3268 está aberta no servidor alvo
-nc -zv 10.194.250.111 3268
-
-```
-
-### 1.4 Extração do seu Distinguished Name (DN)
-
-O LDAP exige o caminho completo do objeto. Use seu login para descobrir seu DN exato:
-
-```bash
-ldapsearch -H ldap://10.194.250.111 -x \
-  -D "seu_usuario@governo.gdfnet.df" -W \
-  -b "DC=governo,DC=gdfnet,DC=df" \
-  "(sAMAccountName=seu_usuario)" dn
-
-```
+1.  **Clone o repositório:**
+    ```bash
+    git clone ffrazao_github:ffrazao/seagri.git
+    cd seagri
+    ```
+2.  **Provisionamento:** (Configura permissões e credenciais iniciais)
+    ```bash
+    chmod +x setup.sh
+    ./setup.sh
+    ```
+3.  **Inicie o Stack:**
+    ```bash
+    docker-compose up -d
+    ```
 
 ---
 
-## ⚙️ Parte 2: Configuração do Keycloak (Realm Corporativo)
+## 🔍 Guia de Engenharia Reversa: Integração AD/LDAP
 
-Configuração estratégica para evitar redundância de dados e tratar múltiplas contas com o mesmo e-mail.
+Este guia permite que um analista identifique os parâmetros do Active Directory (AD) partindo do zero absoluto, utilizando apenas o terminal Ubuntu.
 
-### 2.1 Configurações do Realm `corporativo`
+### 1. Localização do Domínio e Servidores
 
-Para suportar usuários com o mesmo e-mail (ex: contas `admin` e `comum`), ajuste em **Realm Settings > Login**:
+#### 1.1 Identificar o Domínio de Rede
+Se o comando `nmcli` retornar apenas IPs de DNS, utilize a **Resolução Reversa** para confirmar o domínio oficial:
 
-* **Email as username:** `Off`
-* **Login with email:** `Off` (Obrigatório para evitar ambiguidade).
-* **Duplicate emails:** `On` (Permitido).
+   # 1. Localize os IPs dos resolvedores de nomes (DNS)
+    ```bash
+    nmcli dev show | grep "DNS"
+    ```
 
-### 2.2 Federação LDAP (User Federation)
+   # 2. Descubra o nome canônico do servidor através do IP encontrado
+    ```bash
+    host 10.194.250.111
+    ```
+Esperado: O nome retornado (ex: governo111.governo.gdfnet.df) revela que o domínio para as consultas SRV é governo.gdfnet.df.
 
-Adicione um provedor LDAP com os parâmetros abaixo:
+#### 1.2 Listar Domain Controllers (DCs) e RedundânciaO AD é redundante. 
+Liste todos os servidores que prestam serviço LDAP na rede:
 
-| Campo | Valor Sugerido |
-| --- | --- |
-| **Console Display Name** | `AD-GDF-Global` |
-| **Connection URL** | `ldap://governo.gdfnet.df:3268` |
-| **Bind DN** | `ldap@governo.gdfnet.df` |
-| **Bind Credential** | `Geti1247890*` |
-| **Users DN** | `OU=UNIDADES,DC=governo,DC=gdfnet,DC=df` |
-| **Edit Mode** | `READ_ONLY` |
-| **Import Users** | `Off` (Garante que nenhum dado seja salvo no banco do Keycloak) |
+    ```bash
+    # Consulta o registro de serviço (SRV) do domínio
+    dig -t SRV _ldap._tcp.governo.gdfnet.df
+    ```
 
-### 2.3 Mapeamento de Identidade e Grupos
+#### 1.3 Validar o Catálogo Global (Porta 3268)
+Para que o Keycloak enxergue todos os órgãos do GDF (não apenas a SEAGRI), a porta 3268 deve estar aberta:Bash
 
-Para garantir que o login seja feito pelo CPF/Matrícula e que os grupos do AD virem Roles no Java:
+    ```bash
+    # Verifica conectividade com o Catálogo Global
+    nc -zv 10.194.250.111 3268
+    ```
 
-1. **Username Mapper:** Atributo LDAP `sAMAccountName`.
-2. **Groups Mapper:**
-* **Mapper Type:** `group-ldap-mapper`
-* **LDAP Groups DN:** `OU=UNIDADES,DC=governo,DC=gdfnet,DC=df`
-* **Mapped Group Attribute:** `cn`
+#### 1.4 Extração do Distinguished Name (DN)
+Descubra seu caminho exato na árvore hierárquica para configurar o "Bind DN":
 
+    ```bash
+    ldapsearch -H ldap://10.194.250.111 -x \
+      -D "seu_usuario@governo.gdfnet.df" -W \
+      -b "DC=governo,DC=gdfnet,DC=df" \
+      "(sAMAccountName=seu_usuario)" dn
+    ```
+  
+⚙️ Configuração do Keycloak (Realm Corporativo)
+Configuração otimizada para segurança e tratamento de múltiplas contas por usuário.
 
+#### 2.1 Realm corporativo - Política de Identidade
+Ajuste em Realm Settings > Login:
+Email as username: Off
+Login with email: Off (Evita ambiguidade em usuários com múltiplas contas e mesmo e-mail).
+Duplicate emails: On (Permite que contas como 15017103517 e frazao_admin coexistam com o mesmo e-mail).
 
----
+#### 2.2 Federação LDAP (User Federation)
+Adicione um provedor LDAP com os parâmetros técnicos validados:
 
-## 🏗️ Arquitetura da Solução
+|Campo|Valor Técnico|Motivação|
+|---|---|---|
+|Connection URL|ldap://governo.gdfnet.df:3268|Resiliência via Round Robin DNS e busca global.|
+|Bind DN|ldap@governo.gdfnet.df|Conta de serviço dedicada.|
+|Bind Credential|Geti1247890*|Credencial de acesso ao diretório.|
+|Users DN|OU=UNIDADES,DC=governo,DC=gdfnet,DC=df|Escopo abrangente (Todos os órgãos do GDF).|
+|Import Users|Off|Modo Stateless: Nenhum dado é persistido no banco local.|
 
-* **Autenticação em Tempo Real:** O Keycloak valida as credenciais contra o AD e mantém os dados apenas em memória (Stateless).
-* **Resiliência:** O uso do FQDN (`governo.gdfnet.df`) permite que o DNS realize Round Robin entre os 4 servidores disponíveis.
-* **Tratamento de Colisão:** A unicidade é garantida pelo `sAMAccountName`, permitindo que o mesmo servidor possua múltiplos perfis com o mesmo e-mail sem conflitos no Keycloak.
+#### 2.3 Mapeamento de Grupos (Roles)
+Em Mappers, crie um group-ldap-mapper:
+LDAP Groups DN: OU=UNIDADES,DC=governo,DC=gdfnet,DC=df
+Mapped Group Attribute: cn (Isso enviará grupos como G.GETI no Token JWT).
 
----
+🏗️ Lógica de Arquitetura da Solução
+Autenticação Stateless: O Keycloak valida credenciais em tempo real. Se um usuário for removido do AD, seu acesso é revogado instantaneamente, sem necessidade de sincronização de bases.
+Resiliência de Hostname: Ao utilizar governo.gdfnet.df na URL de conexão, o sistema automaticamente alterna entre os 4 Domain Controllers disponíveis caso um deles falhe.
+Separação de Identidades: O sistema utiliza o sAMAccountName como chave única, garantindo que usuários com perfis distintos (Admin/User) sejam tratados corretamente mesmo compartilhando o mesmo e-mail institucional.
 
-*Documentação gerada para suporte a arquiteturas de Back-End Java/Spring.*
-
-
-Desenvolvido por [ffrazao] como parte da arquitetura de backend SEAGRI.
-
-
-
-
-
+Desenvolvido por `[ffrazao]` como parte da arquitetura de backend SEAGRI.
