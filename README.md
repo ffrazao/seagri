@@ -25,21 +25,27 @@ A infraestrutura foi desenhada seguindo princípios de isolamento de processos e
    ```bash
    git clone ffrazao_github:ffrazao/seagri.git
    cd seagri
-
+   ```
 
 Execute o script de provisionamento (ele configurará permissões de pasta e credenciais):
 
-Bash
-chmod +x setup.sh
-./setup.sh
+   ```bash
+   chmod +x setup.sh
+   ./setup.sh
+   ```
+
 Inicie o stack:
 
-Bash
-docker-compose up -d
+   ```bash
+   docker-compose up -d
+   ```
+
 Acompanhe a subida dos serviços:
 
-Bash
-docker-compose logs -f
+   ```bash
+   docker-compose logs -f
+   ```
+
 🛠️ Detalhes Técnicos de Implementação
 Flexibilidade de Configuração
 Diferente de implementações estáticas, este projeto utiliza um Entrypoint Shell Script (init-db.sh) para o PostgreSQL. Isso permite que qualquer alteração no arquivo .env seja refletida dinamicamente no banco de dados durante a inicialização, sem a necessidade de recriar scripts manuais.
@@ -58,17 +64,7 @@ Database (DBeaver/psql): Host localhost, Porta 5432.
 Ao acessar o Keycloak pela primeira vez, um aviso de segurança sobre "usuário temporário" será exibido.
 Recomendação: Crie um novo usuário administrativo através do painel Users e atribua a Realm Role admin a ele para desativar o bootstrap inicial.
 
-
-Aqui está o conteúdo formatado em **Markdown**, pronto para ser copiado e colado no seu arquivo `README.md`. Ele utiliza a sintaxe padrão do GitHub para garantir que tabelas, blocos de código e destaques fiquem visualmente organizados.
-
----
-
-```markdown
-# 🛡️ Guia de Engenharia Reversa e Federação de Identidade (AD/LDAP + Keycloak)
-
-Este guia documenta o processo de descoberta de infraestrutura de rede e a configuração de um ambiente de autenticação corporativa resiliente, focado no cenário do **GDF (Governo do Distrito Federal)**.
-
----
+GUIA LDAP E AFINS
 
 ## 📋 Parte 1: Descoberta de Infraestrutura (Ubuntu/Linux)
 
@@ -83,7 +79,7 @@ nmcli dev show | grep "DOMAIN\|DNS"
 
 ```
 
-* **Esperado:** O campo `IP4.DOMAIN` revelará o sufixo (ex: `governo.gdfnet.df`).
+* **Esperado:** O campo `IP4.DOMAIN` revelará o IP (ex: ` 10.194.250.111`).
 
 ### 1.2 Identificação dos Domain Controllers (DCs)
 
