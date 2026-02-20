@@ -112,4 +112,68 @@ Autenticação Stateless: O Keycloak valida credenciais em tempo real. Se um usu
 Resiliência de Hostname: Ao utilizar governo.gdfnet.df na URL de conexão, o sistema automaticamente alterna entre os 4 Domain Controllers disponíveis caso um deles falhe.
 Separação de Identidades: O sistema utiliza o sAMAccountName como chave única, garantindo que usuários com perfis distintos (Admin/User) sejam tratados corretamente mesmo compartilhando o mesmo e-mail institucional.
 
+
+# 🛡️ SEAGRI - Infraestrutura de Identidade e Microserviços
+
+Este repositório contém o blueprint de arquitetura para a fundação de microserviços da SEAGRI. A solução utiliza **Keycloak 26.0** e **PostgreSQL 16**, orquestrados via Docker, com federação **Stateless** (sem sincronismo) com o Active Directory do GDF e Login Social.
+
+## 🏗️ Arquitetura do Stack
+
+* **Identity Provider:** Keycloak (Quarkus).
+* **Database:** PostgreSQL (Alpine) com volumes segregados.
+* **Federação:** Integração direta com o Catálogo Global do AD (porta 3268).
+
+---
+
+## 🔍 Guia de Engenharia Reversa: Integração AD/LDAP
+
+### 1. Descoberta de Infraestrutura
+1. **Identificar Domínio:** Use `nmcli dev show | grep "DNS"` para obter os IPs e `host <IP>` para descobrir o domínio (ex: `governo.gdfnet.df`).
+2. **Validar Catálogo Global:** Confirme a porta 3268 com `nc -zv <IP> 3268` para enxergar todos os órgãos do GDF.
+3. **Localizar Distinguished Name (DN):** Utilize `ldapsearch` para identificar o caminho exato do usuário, especialmente para contas administrativas (`OU=Admins`).
+
+---
+
+## ⚙️ Configuração do Keycloak (Realm Corporativo)
+
+### 2.1 Configurações do Realm
+* **Email as username:** `Off`.
+* **Login with email:** `Off` (Evita conflitos entre múltiplas contas do mesmo usuário).
+* **Duplicate emails:** `On`.
+
+### 2.2 Federação LDAP (User Federation)
+
+| Campo | Valor Técnico | Motivação |
+| :--- | :--- | :--- |
+| **Connection URL** | `ldap://governo.gdfnet.df:3268` | Busca global e resiliência via DNS. |
+| **Bind DN** | `ldap@governo.gdfnet.df` | Conta de serviço dedicada. |
+| **Users DN** | `OU=UNIDADES,DC=governo,DC=gdfnet,DC=df` | Escopo total do GDF. |
+| **Username Attribute** | `sAMAccountName` | Atributo de login (CPF ou nome_admin). |
+| **Search Scope** | `Subtree` | Busca em sub-pastas (essencial para localizar contas Admin). |
+| **Import Users** | `Off` | **Modo Stateless:** Sem persistência no banco local. |
+
+### 2.3 Mapeamento de Grupos (Ajuste de Consistência)
+Para evitar erros de árvore do AD (`GroupTreeResolveException`):
+* **Preserve Group Inheritance:** `Off`.
+* **Ignore Missing Groups:** `On`.
+* **User Roles Retrieve Strategy:** `GET_GROUPS_FROM_USER_MEMBEROF_ATTRIBUTE`.
+
+---
+
+## 🌐 Integração Identity Provider (Google)
+
+Para habilitar o login social no Realm `corporativo`:
+
+1. **Identity Providers:** Selecione `Google` no painel do Keycloak.
+2. **Redirect URI:** Copie a URL gerada pelo Keycloak e cole no Google Cloud Console (`.../broker/google/endpoint`).
+3. **Credenciais:** Insira o `Client ID` e o `Client Secret` obtidos no projeto Google.
+4. **Hosted Domain:** Opcionalmente, limite o login ao domínio institucional (ex: `seagri.df.gov.br`).
+
+---
+
+## 🏗️ Lógica de Arquitetura
+* **Autenticação Stateless:** Validação em tempo real contra o AD.
+* **Híbrido Social/Corporativo:** O Keycloak atua como broker, permitindo que o usuário escolha entre a conta GDF ou Google, mantendo a unicidade pelo e-mail se necessário.
+
+
 Desenvolvido por `[ffrazao]` como parte da arquitetura de backend SEAGRI.
