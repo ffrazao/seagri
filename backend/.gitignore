@@ -1,0 +1,63 @@
+# =========================
+# Gradle
+# =========================
+.gradle/
+build/
+out/
+
+# Wrapper (mantém jar e properties, ignora binários temporários)
+!gradle/wrapper/gradle-wrapper.jar
+
+# =========================
+# Java
+# =========================
+*.class
+*.log
+hs_err_pid*
+replay_pid*
+
+# =========================
+# IDE - IntelliJ
+# =========================
+.idea/
+*.iws
+*.iml
+*.ipr
+
+# =========================
+# IDE - Eclipse
+# =========================
+.project
+.classpath
+.settings/
+
+# =========================
+# VS Code
+# =========================
+.vscode/
+
+# =========================
+# Mac / Linux / Windows lixo
+# =========================
+.DS_Store
+Thumbs.db
+
+# =========================
+# Ambiente / Segredos
+# =========================
+.env
+.env.*
+*.env
+
+# =========================
+# Logs de aplicação
+# =========================
+logs/
+*.log
+
+# =========================
+# Arquivos temporários
+# =========================
+*.swp
+*.swo
+*~

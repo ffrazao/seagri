@@ -47,3 +47,15 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+  # backend:
+  #   image: openjdk:21-jdk-slim
+  #   container_name: seagri_backend
+  #   ports:
+  #     - "8081:8080"
+  #   environment:
+  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${BACKEND_DB_NAME}
+  #     SPRING_DATASOURCE_USERNAME: ${BACKEND_DB_USER}
+  #     SPRING_DATASOURCE_PASSWORD: ${BACKEND_DB_PASSWORD}
+  #   depends_on:
+  #     postgres:
+  #       condition: service_healthy

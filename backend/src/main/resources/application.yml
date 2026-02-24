@@ -1,0 +1,29 @@
+spring:
+  application:
+    name: seagri-backend
+  
+  # Configuração de conexão com o banco de dados isolado do backend
+  datasource:
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${BACKEND_DB_NAME:backend_db}
+    username: ${BACKEND_DB_USER:backend_user}
+    password: ${BACKEND_DB_PASSWORD:backend_pass}
+    driver-class-name: org.postgresql.Driver
+
+  # O Flyway vai gerenciar as criações de tabelas automaticamente
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+
+  # Configuração do JPA/Hibernate
+  jpa:
+    hibernate:
+      # NUNCA usar 'update' ou 'create' em produção. O Flyway é o dono do schema!
+      ddl-auto: validate 
+    show-sql: true # Mostra as consultas no console durante o dev
+    properties:
+      hibernate:
+        format_sql: true
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+
+server:
+  port: 8081

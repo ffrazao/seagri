@@ -1,0 +1,48 @@
+plugins {
+    id 'java'
+    id 'org.springframework.boot' version '3.2.3'
+    id 'io.spring.dependency-management' version '1.1.4'
+}
+
+group = 'br.gov.df.seagri'
+version = '0.0.1-SNAPSHOT'
+
+java {
+    sourceCompatibility = '21'
+}
+
+configurations {
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
+}
+
+repositories {
+    mavenCentral()
+}
+
+dependencies {
+    // Web (Para criar as APIs REST futuramente)
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    
+    // JPA e Banco de Dados
+    implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
+    runtimeOnly 'org.postgresql:postgresql' // Driver do Postgres
+    
+    // Migrações de Banco de Dados
+    implementation 'org.flywaydb:flyway-core'
+    // A linha abaixo foi removida:
+    // implementation 'org.flywaydb:flyway-database-postgresql'
+    
+    // Ferramentas de Produtividade (Lombok e DevTools)
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
+    developmentOnly 'org.springframework.boot:spring-boot-devtools'
+
+    // Testes
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+}
+
+tasks.named('test') {
+    useJUnitPlatform()
+}
