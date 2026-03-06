@@ -10,6 +10,9 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.stream.Collectors;
+
 @RestController
 @RequestMapping("/api/v1/presencas")
 public class RegistroPresencaController extends AbstractApiController {
@@ -24,10 +27,8 @@ public class RegistroPresencaController extends AbstractApiController {
     public ResponseEntity<ApiResponse<RegistroPresencaResponseDTO>> registrar(
             @Valid @RequestBody RegistroPresencaRequestDTO dto) {
 
-        // 1. Extrai o ID do usuário (Keycloak sub) de forma segura do token JWT
         String usuarioIdAutenticado = obterUsuarioAutenticado();
 
-        // 2. Repassa o comando único para a camada de aplicação
         RegistroPresenca eventoSalvo = registroPresencaSrv.registrar(
                 dto.getOrganizacaoId(),
                 dto.getUnidadeId(),
@@ -38,19 +39,37 @@ public class RegistroPresencaController extends AbstractApiController {
                 dto.getDispositivoId(),
                 dto.getModoRegistro(),
                 dto.getCapturadoEm(),
-                usuarioIdAutenticado // O criador é o próprio usuário logado
+                usuarioIdAutenticado
         );
 
-        // 3. Converte a Entidade para DTO de Resposta (Omitindo dados sensíveis como biometria ou raw GPS)
-        RegistroPresencaResponseDTO responseDTO = RegistroPresencaResponseDTO.builder()
-                .id(eventoSalvo.getId())
-                .usuarioId(eventoSalvo.getUsuarioId())
-                .statusTecnico(eventoSalvo.getStatusTecnico())
-                .statusAdministrativo(eventoSalvo.getStatusAdministrativo())
-                .recebidoNoServidorEm(eventoSalvo.getRecebidoNoServidorEm())
-                .build();
+        return created(converterParaDto(eventoSalvo));
+    }
 
-        // 4. Retorna envelopado no padrão ApiResponse (HTTP 201 Created)
-        return created(responseDTO);
+    // NOVA ROTA: Listar o histórico do próprio usuário logado
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<RegistroPresencaResponseDTO>>> listarHistorico() {
+        
+        // Garante que o usuário só pode ver o próprio histórico
+        String usuarioIdAutenticado = obterUsuarioAutenticado();
+        
+        // Busca os registros do usuário ordenados por data (mais recentes primeiro)
+        List<RegistroPresenca> historico = registroPresencaSrv.buscarHistoricoPorUsuario(usuarioIdAutenticado);
+        
+        List<RegistroPresencaResponseDTO> resposta = historico.stream()
+                .map(this::converterParaDto)
+                .collect(Collectors.toList());
+                
+        return ok(resposta);
+    }
+
+    // Método utilitário reaproveitável
+    private RegistroPresencaResponseDTO converterParaDto(RegistroPresenca entidade) {
+        return RegistroPresencaResponseDTO.builder()
+                .id(entidade.getId())
+                .usuarioId(entidade.getUsuarioId())
+                .statusTecnico(entidade.getStatusTecnico())
+                .statusAdministrativo(entidade.getStatusAdministrativo())
+                .recebidoNoServidorEm(entidade.getRecebidoNoServidorEm())
+                .build();
     }
 }

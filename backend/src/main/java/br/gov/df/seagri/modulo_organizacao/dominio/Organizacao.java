@@ -27,9 +27,11 @@ public class Organizacao extends EntidadeBase implements AuditoriaCompleta {
     @Column(name = "status", nullable = false, length = 32)
     private String status;
 
+    @Setter
     @Column(name = "criado_por", nullable = false, length = 64, updatable = false)
     private String criadoPor;
 
+    @Setter
     @Column(name = "criado_em", nullable = false, updatable = false)
     private LocalDateTime criadoEm;
 

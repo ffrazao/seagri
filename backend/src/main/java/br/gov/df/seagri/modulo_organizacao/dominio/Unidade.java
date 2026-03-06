@@ -21,6 +21,7 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Unidade extends EntidadeBase implements AuditoriaCompleta, PertenceOrganizacao {
 
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organizacao_id", nullable = false, updatable = false)
     private Organizacao organizacao;
@@ -50,9 +51,11 @@ public class Unidade extends EntidadeBase implements AuditoriaCompleta, Pertence
     @Column(name = "poligono_geo", columnDefinition = "jsonb")
     private String poligonoGeo;
 
+    @Setter
     @Column(name = "criado_por", nullable = false, length = 64, updatable = false)
     private String criadoPor;
 
+    @Setter
     @Column(name = "criado_em", nullable = false, updatable = false)
     private LocalDateTime criadoEm;
 

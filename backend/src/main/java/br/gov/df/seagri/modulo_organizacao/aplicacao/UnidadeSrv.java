@@ -22,10 +22,18 @@ public class UnidadeSrv extends BaseCrudTenantSrv<Unidade, UUID> {
         this.organizacaoSrv = organizacaoSrv;
     }
 
+    // Sobrescrevemos o método padrão para interceptar a entidade vinda do Controller
+    @Override
     @Transactional
-    public Unidade criarUnidade(UUID organizacaoId, String nome, String tipoGeometria, String criadoPor) {
-        Organizacao organizacao = organizacaoSrv.buscarPorId(organizacaoId);
-        Unidade novaUnidade = new Unidade(organizacao, nome, tipoGeometria, criadoPor);
-        return super.salvar(organizacaoId, novaUnidade);
+    public Unidade salvar(UUID organizacaoId, Unidade entidade) {
+        
+        // Se a organização ainda não foi preenchida (ex: inserção vinda via MapStruct)
+        if (entidade.getOrganizacao() == null) {
+            Organizacao organizacao = organizacaoSrv.buscarPorId(organizacaoId);
+            entidade.setOrganizacao(organizacao);
+        }
+        
+        // Repassa para a classe pai (BaseCrudTenantSrv) cuidar das validações de Tenant e do save()
+        return super.salvar(organizacaoId, entidade);
     }
 }
