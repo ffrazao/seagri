@@ -3,6 +3,8 @@ package br.gov.df.seagri.modulo_organizacao.dominio;
 import br.gov.df.seagri.dominio_central.dominio.AuditoriaCompleta;
 import br.gov.df.seagri.dominio_central.dominio.EntidadeBase;
 import br.gov.df.seagri.dominio_central.dominio.PertenceOrganizacao;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -43,6 +45,7 @@ public class Unidade extends EntidadeBase implements AuditoriaCompleta, Pertence
     @Column(name = "raio_geo_metros")
     private Integer raioGeoMetros;
 
+    @JdbcTypeCode(SqlTypes.JSON)
     @Setter
     @Column(name = "poligono_geo", columnDefinition = "jsonb")
     private String poligonoGeo;

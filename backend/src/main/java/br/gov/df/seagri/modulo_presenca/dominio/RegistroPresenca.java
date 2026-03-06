@@ -3,6 +3,8 @@ package br.gov.df.seagri.modulo_presenca.dominio;
 import br.gov.df.seagri.dominio_central.dominio.EntidadeBase;
 import br.gov.df.seagri.dominio_central.dominio.PertenceOrganizacao;
 import br.gov.df.seagri.dominio_central.dominio.RastreavelCriacao;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
@@ -59,6 +61,7 @@ public class RegistroPresenca extends EntidadeBase implements PertenceOrganizaca
     private Double pontuacaoRisco;
 
     // Ajustado para indicadores_risco
+    @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "indicadores_risco", columnDefinition = "jsonb", updatable = false)
     private String indicadoresRisco;
 

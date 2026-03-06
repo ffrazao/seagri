@@ -22,8 +22,15 @@ repositories {
 }
 
 dependencies {
-    // Web (Para criar as APIs REST futuramente)
+    // Web (Para criar as APIs REST)
     implementation 'org.springframework.boot:spring-boot-starter-web'
+    
+    // Segurança e OAuth2/JWT (Para integração com o Keycloak)
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    implementation 'org.springframework.boot:spring-boot-starter-oauth2-resource-server'
+    
+    // Validação de DTOs (Jakarta Validation - @Valid, @NotNull)
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
     
     // JPA e Banco de Dados
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
@@ -41,6 +48,7 @@ dependencies {
 
     // Testes
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testImplementation 'org.springframework.security:spring-security-test'
 }
 
 tasks.named('test') {
