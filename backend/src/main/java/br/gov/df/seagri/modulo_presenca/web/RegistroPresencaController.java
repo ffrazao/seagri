@@ -12,6 +12,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 
 import java.util.UUID;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/v1/orgs/{organizacaoId}/presencas")
@@ -48,5 +49,23 @@ public class RegistroPresencaController extends AbstractApiController {
 
         // Converte a Entidade salva para DTO antes de devolver ao cliente
         return created(mapper.paraDto(presencaSalva));
+    }
+
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<RegistroPresencaResponseDTO>>> listarHistorico(
+            @PathVariable UUID organizacaoId) {
+        
+        // Extrai a identidade de quem está fazendo a requisição
+        String usuarioId = obterUsuarioAutenticado();
+
+        // Busca o histórico imutável no banco de dados
+        List<RegistroPresenca> historico = registroPresencaSrv.buscarHistoricoPorUsuario(usuarioId);
+
+        // Converte a lista de Entidades para a lista de DTOs usando o MapStruct
+        List<RegistroPresencaResponseDTO> historicoDto = historico.stream()
+                .map(mapper::paraDto)
+                .toList();
+
+        return ok(historicoDto);
     }
 }
