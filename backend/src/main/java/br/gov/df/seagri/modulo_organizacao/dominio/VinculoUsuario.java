@@ -21,10 +21,12 @@ import java.util.UUID;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class VinculoUsuario extends EntidadeBase implements AuditoriaCompleta, PertenceOrganizacao {
 
+    @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "organizacao_id", nullable = false, updatable = false)
     private Organizacao organizacao;
 
+    @Setter
     @Column(name = "usuario_id", nullable = false, length = 64, updatable = false)
     private String usuarioId;
 
@@ -36,9 +38,11 @@ public class VinculoUsuario extends EntidadeBase implements AuditoriaCompleta, P
     @Column(name = "status", nullable = false, length = 32)
     private String status;
 
+    @Setter
     @Column(name = "criado_por", nullable = false, length = 64, updatable = false)
     private String criadoPor;
 
+    @Setter
     @Column(name = "criado_em", nullable = false, updatable = false)
     private LocalDateTime criadoEm;
 
