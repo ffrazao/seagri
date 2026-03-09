@@ -4,72 +4,49 @@ import br.gov.df.seagri.dominio_central.web.AbstractApiController;
 import br.gov.df.seagri.dominio_central.web.ApiResponse;
 import br.gov.df.seagri.modulo_presenca.aplicacao.RegistroPresencaSrv;
 import br.gov.df.seagri.modulo_presenca.dominio.RegistroPresenca;
+import br.gov.df.seagri.modulo_presenca.web.dto.RegistroPresencaMapper;
 import br.gov.df.seagri.modulo_presenca.web.dto.RegistroPresencaRequestDTO;
 import br.gov.df.seagri.modulo_presenca.web.dto.RegistroPresencaResponseDTO;
-import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
 
-import java.util.List;
-import java.util.stream.Collectors;
+import java.util.UUID;
 
 @RestController
-@RequestMapping("/api/v1/presencas")
+@RequestMapping("/api/v1/orgs/{organizacaoId}/presencas")
 public class RegistroPresencaController extends AbstractApiController {
 
     private final RegistroPresencaSrv registroPresencaSrv;
+    private final RegistroPresencaMapper mapper; // Injeção do Mapper!
 
-    public RegistroPresencaController(RegistroPresencaSrv registroPresencaSrv) {
+    public RegistroPresencaController(RegistroPresencaSrv registroPresencaSrv, RegistroPresencaMapper mapper) {
         this.registroPresencaSrv = registroPresencaSrv;
+        this.mapper = mapper;
     }
 
     @PostMapping
+    // O Retorno agora protege a entidade e devolve o ResponseDTO
     public ResponseEntity<ApiResponse<RegistroPresencaResponseDTO>> registrar(
-            @Valid @RequestBody RegistroPresencaRequestDTO dto) {
+            @PathVariable UUID organizacaoId,
+            @Valid @RequestBody RegistroPresencaRequestDTO request) {
 
-        String usuarioIdAutenticado = obterUsuarioAutenticado();
+        String usuarioId = obterUsuarioAutenticado(); 
 
-        RegistroPresenca eventoSalvo = registroPresencaSrv.registrar(
-                dto.getOrganizacaoId(),
-                dto.getUnidadeId(),
-                usuarioIdAutenticado,
-                dto.getLatitude(),
-                dto.getLongitude(),
-                dto.getPrecisaoGps(),
-                dto.getDispositivoId(),
-                dto.getModoRegistro(),
-                dto.getCapturadoEm(),
-                usuarioIdAutenticado
+        RegistroPresenca presencaSalva = registroPresencaSrv.registrar(
+                organizacaoId,
+                request.getUnidadeId(),
+                usuarioId,
+                request.getLatitude(),
+                request.getLongitude(),
+                request.getPrecisaoGps(),
+                request.getDispositivoId(),
+                request.getModoRegistro(),
+                request.getCapturadoEm(),
+                usuarioId 
         );
 
-        return created(converterParaDto(eventoSalvo));
-    }
-
-    // NOVA ROTA: Listar o histórico do próprio usuário logado
-    @GetMapping
-    public ResponseEntity<ApiResponse<List<RegistroPresencaResponseDTO>>> listarHistorico() {
-        
-        // Garante que o usuário só pode ver o próprio histórico
-        String usuarioIdAutenticado = obterUsuarioAutenticado();
-        
-        // Busca os registros do usuário ordenados por data (mais recentes primeiro)
-        List<RegistroPresenca> historico = registroPresencaSrv.buscarHistoricoPorUsuario(usuarioIdAutenticado);
-        
-        List<RegistroPresencaResponseDTO> resposta = historico.stream()
-                .map(this::converterParaDto)
-                .collect(Collectors.toList());
-                
-        return ok(resposta);
-    }
-
-    // Método utilitário reaproveitável
-    private RegistroPresencaResponseDTO converterParaDto(RegistroPresenca entidade) {
-        return RegistroPresencaResponseDTO.builder()
-                .id(entidade.getId())
-                .usuarioId(entidade.getUsuarioId())
-                .statusTecnico(entidade.getStatusTecnico())
-                .statusAdministrativo(entidade.getStatusAdministrativo())
-                .recebidoNoServidorEm(entidade.getRecebidoNoServidorEm())
-                .build();
+        // Converte a Entidade salva para DTO antes de devolver ao cliente
+        return created(mapper.paraDto(presencaSalva));
     }
 }

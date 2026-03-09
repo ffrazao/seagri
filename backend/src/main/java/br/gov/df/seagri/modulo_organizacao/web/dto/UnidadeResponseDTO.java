@@ -13,4 +13,9 @@ public class UnidadeResponseDTO {
     private String nome;
     private String tipoGeometria;
     private LocalDateTime criadoEm;
+    
+    // Novos campos adicionados
+    private Double centroGeoLat;
+    private Double centroGeoLng;
+    private Integer raioGeoMetros;
 }

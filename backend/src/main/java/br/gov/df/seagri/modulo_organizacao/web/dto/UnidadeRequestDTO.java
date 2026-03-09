@@ -12,8 +12,8 @@ public class UnidadeRequestDTO {
     @NotBlank(message = "O tipo de geometria é obrigatório (ex: RADIUS, POLYGON)")
     private String tipoGeometria;
 
-    // Campos opcionais dependendo do tipo da geometria
-    private Double geoCenterLat;
-    private Double geoCenterLng;
-    private Integer geoRadiusMeters;
+    // Campos ajustados para bater EXATAMENTE com a Entidade Unidade
+    private Double centroGeoLat;
+    private Double centroGeoLng;
+    private Integer raioGeoMetros;
 }

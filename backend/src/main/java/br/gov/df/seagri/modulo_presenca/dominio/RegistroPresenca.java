@@ -10,6 +10,7 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.Table;
 import lombok.AccessLevel;
 import lombok.Getter;
+import lombok.Setter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
@@ -57,17 +58,21 @@ public class RegistroPresenca extends EntidadeBase implements PertenceOrganizaca
     private String usuarioIntermediarioId;
 
     // Ajustado para pontuacao_risco
+    @Setter // Adicionado para a Validação Antifraude (RFC-0003)
     @Column(name = "pontuacao_risco", updatable = false)
     private Double pontuacaoRisco;
 
     // Ajustado para indicadores_risco
+    @Setter // Adicionado para a Validação Antifraude (RFC-0003)
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(name = "indicadores_risco", columnDefinition = "jsonb", updatable = false)
     private String indicadoresRisco;
 
+    // O statusTécnico continua sem setter, pois é SEMPRE "RECEBIDO" (Imutável)
     @Column(name = "status_tecnico", nullable = false, length = 32, updatable = false)
     private String statusTecnico;
 
+    @Setter // Adicionado para aprovação automática caso o GPS esteja correto
     @Column(name = "status_administrativo", nullable = false, length = 32, updatable = false)
     private String statusAdministrativo;
 
