@@ -1,5 +1,6 @@
 package br.gov.df.seagri.dominio_central.web;
 
+import org.springframework.security.access.AccessDeniedException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.MethodArgumentNotValidException;
@@ -15,6 +16,12 @@ public class GlobalExceptionHandler {
     // 1. Erros de Segurança (ex: Violação de Isolamento Multi-Tenant)
     @ExceptionHandler(SecurityException.class)
     public ResponseEntity<ApiResponse<Void>> handleSecurityException(SecurityException ex) {
+        return buildErrorResponse(HttpStatus.FORBIDDEN, "Acesso Negado", List.of(ex.getMessage()));
+    }
+
+    // 1.5 Erros de Acesso Negado do Interceptador (PDP / Spring Security)
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccessDeniedException(AccessDeniedException ex) {
         return buildErrorResponse(HttpStatus.FORBIDDEN, "Acesso Negado", List.of(ex.getMessage()));
     }
 
