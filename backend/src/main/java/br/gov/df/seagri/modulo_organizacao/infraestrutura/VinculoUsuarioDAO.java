@@ -19,4 +19,7 @@ public interface VinculoUsuarioDAO extends BaseDAO<VinculoUsuario, UUID> {
     
     // Lista todas as organizações nas quais um usuário possui vínculo
     List<VinculoUsuario> findByUsuarioId(String usuarioId);
+
+    // NOVO: Valida rapidamente se o usuário já possui vínculo (Usado no ConviteSrv para evitar duplicação)
+    boolean existsByOrganizacaoIdAndUsuarioId(UUID organizacaoId, String usuarioId);
 }

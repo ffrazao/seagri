@@ -1,29 +1,21 @@
 package br.gov.df.seagri.modulo_organizacao.aplicacao;
 
+import br.gov.df.seagri.dominio_central.aplicacao.BaseCrudSrv; // Ajuste o import se o nome do seu serviço global base for diferente
 import br.gov.df.seagri.modulo_organizacao.dominio.Organizacao;
 import br.gov.df.seagri.modulo_organizacao.infraestrutura.OrganizacaoDAO;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
 @Service
-public class OrganizacaoSrv {
+public class OrganizacaoSrv extends BaseCrudSrv<Organizacao, UUID> {
 
     private final OrganizacaoDAO organizacaoDAO;
 
+    // Injeta o DAO próprio e repassa para a superclasse genérica orquestrar o CRUD global
     public OrganizacaoSrv(OrganizacaoDAO organizacaoDAO) {
+        super(organizacaoDAO); 
         this.organizacaoDAO = organizacaoDAO;
     }
 
-    @Transactional
-    public Organizacao criarOrganizacao(String nome, String criadoPor) {
-        Organizacao novaOrganizacao = new Organizacao(nome, criadoPor);
-        return organizacaoDAO.save(novaOrganizacao);
-    }
-
-    public Organizacao buscarPorId(UUID id) {
-        return organizacaoDAO.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("Organização não encontrada: " + id));
-    }
 }

@@ -7,15 +7,10 @@ import java.util.UUID;
 
 @Data
 @Builder
-public class UnidadeResponseDTO {
+public class OrganizacaoResponseDTO {
     private UUID id;
-    private UUID organizacaoId;
     private String nome;
-    private String tipoGeometria;
+    private String status;
+    private String criadoPor;
     private LocalDateTime criadoEm;
-    
-    // Novos campos adicionados
-    private Double centroGeoLat;
-    private Double centroGeoLng;
-    private Integer raioGeoMetros;
 }

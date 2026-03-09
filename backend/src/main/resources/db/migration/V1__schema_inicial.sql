@@ -54,7 +54,7 @@ CREATE TABLE convite (
     id UUID PRIMARY KEY,
     organizacao_id UUID NOT NULL,
     codigo VARCHAR(32) NOT NULL,
-    expiracao TIMESTAMP NOT NULL,
+    data_expiracao TIMESTAMP NOT NULL,
     usado BOOLEAN NOT NULL DEFAULT FALSE,
     criado_por VARCHAR(64) NOT NULL,
     criado_em TIMESTAMP NOT NULL,

@@ -22,13 +22,22 @@ public class VinculoUsuarioSrv extends BaseCrudTenantSrv<VinculoUsuario, UUID> {
         this.organizacaoSrv = organizacaoSrv;
     }
 
+    @Override
     @Transactional
-    public VinculoUsuario criarVinculo(UUID organizacaoId, String usuarioId, String papel, String criadoPor) {
-        vinculoUsuarioDAO.findByUsuarioIdAndOrganizacaoId(usuarioId, organizacaoId)
+    public VinculoUsuario salvar(UUID organizacaoId, VinculoUsuario entidade) {
+        
+        // Se for uma inserção (ID nulo), aplicamos a sua regra de negócio de unicidade!
+        if (entidade.getId() == null) {
+            vinculoUsuarioDAO.findByUsuarioIdAndOrganizacaoId(entidade.getUsuarioId(), organizacaoId)
                 .ifPresent(v -> { throw new IllegalStateException("O usuário já possui vínculo com esta organização."); });
+        }
 
-        Organizacao organizacao = organizacaoSrv.buscarPorId(organizacaoId);
-        VinculoUsuario novoVinculo = new VinculoUsuario(organizacao, usuarioId, papel, criadoPor);
-        return super.salvar(organizacaoId, novoVinculo);
+        // Injetamos a Organização
+        if (entidade.getOrganizacao() == null) {
+            Organizacao organizacao = organizacaoSrv.buscarPorId(organizacaoId);
+            entidade.setOrganizacao(organizacao);
+        }
+
+        return super.salvar(organizacaoId, entidade);
     }
 }

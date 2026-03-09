@@ -1,6 +1,7 @@
 package br.gov.df.seagri.dominio_central.web;
 
 import br.gov.df.seagri.dominio_central.aplicacao.CrudTenantSrv;
+import br.gov.df.seagri.dominio_central.dominio.EntidadeBase;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
@@ -9,7 +10,7 @@ import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
-public abstract class AbstractCrudTenantController<T, REQ, RES, ID> extends AbstractApiController {
+public abstract class AbstractCrudTenantController<T extends EntidadeBase, REQ, RES, ID> extends AbstractApiController {
 
     // A sua sugestão aplicada perfeitamente: o estado reside no pai!
     protected final CrudTenantSrv<T, ID> servico;
