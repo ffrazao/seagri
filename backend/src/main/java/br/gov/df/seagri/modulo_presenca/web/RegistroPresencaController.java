@@ -34,17 +34,11 @@ public class RegistroPresencaController extends AbstractApiController {
 
         String usuarioId = obterUsuarioAutenticado(); 
 
+        // CORREÇÃO 1: Chamando o novo serviço passando o DTO empacotado em vez de 10 parâmetros soltos
         RegistroPresenca presencaSalva = registroPresencaSrv.registrar(
                 organizacaoId,
-                request.getUnidadeId(),
                 usuarioId,
-                request.getLatitude(),
-                request.getLongitude(),
-                request.getPrecisaoGps(),
-                request.getDispositivoId(),
-                request.getModoRegistro(),
-                request.getCapturadoEm(),
-                usuarioId 
+                request
         );
 
         // Converte a Entidade salva para DTO antes de devolver ao cliente
@@ -58,8 +52,8 @@ public class RegistroPresencaController extends AbstractApiController {
         // Extrai a identidade de quem está fazendo a requisição
         String usuarioId = obterUsuarioAutenticado();
 
-        // Busca o histórico imutável no banco de dados
-        List<RegistroPresenca> historico = registroPresencaSrv.buscarHistoricoPorUsuario(usuarioId);
+        // CORREÇÃO 2: Chamando o método com o nome correto alinhado com o seu DAO e Serviço
+        List<RegistroPresenca> historico = registroPresencaSrv.buscarPorUsuario(usuarioId);
 
         // Converte a lista de Entidades para a lista de DTOs usando o MapStruct
         List<RegistroPresencaResponseDTO> historicoDto = historico.stream()
@@ -68,4 +62,24 @@ public class RegistroPresencaController extends AbstractApiController {
 
         return ok(historicoDto);
     }
+
+    // Rota GET exclusiva para retornar o arquivo de imagem
+    @GetMapping(value = "/{presencaId}/foto", produces = org.springframework.http.MediaType.IMAGE_JPEG_VALUE)
+    public ResponseEntity<byte[]> exibirFoto(
+            @PathVariable UUID organizacaoId,
+            @PathVariable UUID presencaId) {
+
+        String usuarioId = obterUsuarioAutenticado();
+        byte[] imagem = registroPresencaSrv.buscarFotoBiometrica(organizacaoId, usuarioId, presencaId);
+
+        if (imagem == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        // Retorna os bytes da imagem com cache no navegador
+        return ResponseEntity.ok()
+                .header(org.springframework.http.HttpHeaders.CACHE_CONTROL, "max-age=3600")
+                .body(imagem);
+    }
+
 }

@@ -14,6 +14,9 @@ public class RegistroPresencaResponseDTO {
     private UUID unidadeId;
     private String usuarioId;
     
+    // NOVO: Adicionado para avisar o React se o registro tem ou não uma foto!
+    private UUID referenciaBiometrica;
+    
     // Dados do evento bruto que foram salvos
     private Double latitude;
     private Double longitude;

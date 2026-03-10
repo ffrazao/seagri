@@ -41,7 +41,9 @@ public class RegistroPresenca extends EntidadeBase implements PertenceOrganizaca
     @Column(name = "precisao_gps", nullable = false, updatable = false)
     private Double precisaoGps;
 
-    // Ajustado para pontuacao_biometrica
+    @Column(name = "referencia_biometrica", updatable = false)
+    private UUID referenciaBiometrica;
+
     @Column(name = "pontuacao_biometrica", updatable = false)
     private Double pontuacaoBiometrica;
 
@@ -113,5 +115,12 @@ public class RegistroPresenca extends EntidadeBase implements PertenceOrganizaca
     @Override
     public UUID obterOrganizacaoId() {
         return this.organizacaoId;
+    }
+
+    // Método que garante a imutabilidade ao vincular a foto do disco ao banco de dados
+    public void registrarEvidenciaBiometrica(java.util.UUID referencia, Double pontuacao, Boolean valida) {
+        this.referenciaBiometrica = referencia;
+        this.pontuacaoBiometrica = pontuacao;
+        this.biometriaValida = valida;
     }
 }

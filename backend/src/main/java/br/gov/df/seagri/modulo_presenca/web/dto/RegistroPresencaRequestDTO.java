@@ -1,5 +1,6 @@
 package br.gov.df.seagri.modulo_presenca.web.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import lombok.Data;
@@ -13,13 +14,10 @@ public class RegistroPresencaRequestDTO {
     @NotNull(message = "A Unidade é obrigatória")
     private UUID unidadeId;
     
-    @NotNull(message = "A Latitude é obrigatória")
     private Double latitude;
     
-    @NotNull(message = "A Longitude é obrigatória")
     private Double longitude;
     
-    @NotNull(message = "A Precisão do GPS é obrigatória")
     private Double precisaoGps;
     
     @NotBlank(message = "O ID do Dispositivo é obrigatório")
@@ -30,4 +28,7 @@ public class RegistroPresencaRequestDTO {
     
     @NotNull(message = "O horário de captura é obrigatório")
     private LocalDateTime capturadoEm;
+
+    @JsonProperty("fotoBase64")
+    private String fotoBase64;
 }
