@@ -39,6 +39,8 @@ CREATE TABLE vinculo_usuario (
     organizacao_id UUID NOT NULL,
     usuario_id VARCHAR(64) NOT NULL, -- Keycloak sub
     papel VARCHAR(32) NOT NULL,
+    data_inicio timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    data_fim timestamp NULL,
     status VARCHAR(32) NOT NULL DEFAULT 'ATIVO',
     criado_por VARCHAR(64) NOT NULL,
     criado_em TIMESTAMP NOT NULL,
@@ -49,10 +51,50 @@ CREATE TABLE vinculo_usuario (
 -- Índice único garante que não usemos chave primária composta
 CREATE UNIQUE INDEX uq_vinculo_usuario_org ON vinculo_usuario(usuario_id, organizacao_id);
 
+-- tabela que gere a lotação das pessoas
+CREATE TABLE public.alocacao_unidade (
+    id uuid NOT NULL,
+    vinculo_usuario_id uuid NOT NULL,
+    unidade_id uuid NOT NULL,
+    papel_operacional varchar(32) NOT NULL,
+    status varchar(32) DEFAULT 'ATIVO'::character varying NOT NULL,
+    data_inicio timestamp NOT NULL,
+    data_fim timestamp NULL, 
+    criado_por varchar(64) NOT NULL,
+    criado_em timestamp NOT NULL,
+    atualizado_por varchar(64) NULL,
+    atualizado_em timestamp NULL,
+    
+    CONSTRAINT alocacao_unidade_pkey PRIMARY KEY (id),
+    CONSTRAINT fk_alocacao_vinculo FOREIGN KEY (vinculo_usuario_id) REFERENCES public.vinculo_usuario(id) ON DELETE CASCADE,
+    CONSTRAINT fk_alocacao_unidade FOREIGN KEY (unidade_id) REFERENCES public.unidade(id) ON DELETE CASCADE,
+    
+    -- NOVA REGRA APLICADA: Protegendo o domínio do papel operacional no banco (RFC-0010)
+    CONSTRAINT chk_alocacao_papel CHECK (papel_operacional IN (
+        'PARTICIPANTE', 
+        'MANAGER', 
+        'GESTOR_TITULAR', 
+        'GESTOR_SUBSTITUTO', 
+        'ASSISTENTE',
+        'OWNER'
+    )),
+    
+    -- NOVA REGRA APLICADA: Protegendo os status válidos
+    CONSTRAINT chk_alocacao_status CHECK (status IN (
+        'ATIVO', 
+        'SUSPENSO', 
+        'ENCERRADO'
+    ))
+);
+
+CREATE INDEX idx_alocacao_vinculo ON public.alocacao_unidade(vinculo_usuario_id, status);
+
 -- 4. convite
 CREATE TABLE convite (
     id UUID PRIMARY KEY,
     organizacao_id UUID NOT NULL,
+    unidade_id uuid NULL,
+    papel_esperado varchar(32) DEFAULT 'PARTICIPANTE' NOT NULL,
     codigo VARCHAR(32) NOT NULL,
     data_expiracao TIMESTAMP NOT NULL,
     usado BOOLEAN NOT NULL DEFAULT FALSE,
@@ -63,6 +105,14 @@ CREATE TABLE convite (
     FOREIGN KEY (organizacao_id) REFERENCES organizacao(id)
 );
 CREATE UNIQUE INDEX uq_convite_codigo ON convite(codigo);
+
+-- Garante a integridade referencial com a tabela unidade
+ALTER TABLE public.convite ADD CONSTRAINT fk_convite_unidade FOREIGN KEY (unidade_id) REFERENCES public.unidade(id) ON DELETE CASCADE;
+
+-- Aplica a mesma constraint de domínio que criamos hoje mais cedo
+ALTER TABLE public.convite ADD CONSTRAINT chk_convite_papel CHECK (papel_esperado IN (
+    'PARTICIPANTE', 'MANAGER', 'GESTOR_TITULAR', 'GESTOR_SUBSTITUTO', 'ASSISTENTE', 'OWNER'
+));
 
 -- 5. perfil_biometrico
 CREATE TABLE perfil_biometrico (

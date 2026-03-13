@@ -19,10 +19,18 @@ public class Convite extends EntidadeBase {
     @JoinColumn(name = "organizacao_id", nullable = false, updatable = false)
     private Organizacao organizacao;
 
+    // NOVO: Mapeamento da Unidade (RFC-0010)
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "unidade_id")
+    private Unidade unidade;
+
     @Column(name = "codigo", nullable = false, length = 32, unique = true)
     private String codigo;
 
-    // Agora alinhado perfeitamente com a coluna renomeada no banco
+    // NOVO: Papel esperado ao aceitar o convite (RFC-0010)
+    @Column(name = "papel_esperado", nullable = false, length = 32)
+    private String papelEsperado;
+
     @Column(name = "data_expiracao", nullable = false)
     private LocalDateTime dataExpiracao;
 
@@ -36,7 +44,6 @@ public class Convite extends EntidadeBase {
     @Column(name = "criado_em", nullable = false, updatable = false)
     private LocalDateTime criadoEm;
 
-    // Padrão de auditoria mantido conforme RFC-0005
     @Setter
     @Column(name = "atualizado_por", length = 64)
     private String atualizadoPor;
@@ -45,9 +52,12 @@ public class Convite extends EntidadeBase {
     @Column(name = "atualizado_em")
     private LocalDateTime atualizadoEm;
 
-    public Convite(Organizacao organizacao, String codigo, LocalDateTime dataExpiracao, String criadoPor) {
+    // Construtor atualizado
+    public Convite(Organizacao organizacao, Unidade unidade, String codigo, String papelEsperado, LocalDateTime dataExpiracao, String criadoPor) {
         this.organizacao = organizacao;
+        this.unidade = unidade;
         this.codigo = codigo;
+        this.papelEsperado = papelEsperado;
         this.dataExpiracao = dataExpiracao;
         this.criadoPor = criadoPor;
         this.criadoEm = LocalDateTime.now();

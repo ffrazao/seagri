@@ -2,7 +2,6 @@ package br.gov.df.seagri.modulo_organizacao.dominio;
 
 import br.gov.df.seagri.dominio_central.dominio.AuditoriaCompleta;
 import br.gov.df.seagri.dominio_central.dominio.EntidadeBase;
-import br.gov.df.seagri.dominio_central.dominio.PertenceOrganizacao;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
@@ -11,34 +10,31 @@ import lombok.Setter;
 
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
-import java.util.UUID;
 
 @Entity
-@Table(name = "vinculo_usuario", uniqueConstraints = {
-    @UniqueConstraint(columnNames = {"usuario_id", "organizacao_id"})
-})
+@Table(name = "alocacao_unidade")
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-public class VinculoUsuario extends EntidadeBase implements AuditoriaCompleta, PertenceOrganizacao {
+public class AlocacaoUnidade extends EntidadeBase implements AuditoriaCompleta {
 
     @Setter
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "organizacao_id", nullable = false, updatable = false)
-    private Organizacao organizacao;
+    @JoinColumn(name = "vinculo_usuario_id", nullable = false, updatable = false)
+    private VinculoUsuario vinculoUsuario;
 
     @Setter
-    @Column(name = "usuario_id", nullable = false, length = 64, updatable = false)
-    private String usuarioId;
+    @ManyToOne(fetch = FetchType.LAZY, optional = false)
+    @JoinColumn(name = "unidade_id", nullable = false, updatable = false)
+    private Unidade unidade;
 
     @Setter
-    @Column(name = "papel", nullable = false, length = 32)
-    private String papel;
+    @Column(name = "papel_operacional", nullable = false, length = 32)
+    private String papelOperacional;
 
     @Setter
     @Column(name = "status", nullable = false, length = 32)
     private String status;
 
-    // NOVOS CAMPOS DE TEMPORALIDADE DA RFC-0010
     @Setter
     @Column(name = "data_inicio", nullable = false)
     private LocalDateTime dataInicio;
@@ -63,18 +59,21 @@ public class VinculoUsuario extends EntidadeBase implements AuditoriaCompleta, P
     @Column(name = "atualizado_em")
     private LocalDateTime atualizadoEm;
 
-    public VinculoUsuario(Organizacao organizacao, String usuarioId, String papel, String criadoPor) {
-        this.organizacao = organizacao;
-        this.usuarioId = usuarioId;
-        this.papel = papel;
+    public AlocacaoUnidade(VinculoUsuario vinculoUsuario, Unidade unidade, String papelOperacional, String criadoPor) {
+        this.vinculoUsuario = vinculoUsuario;
+        this.unidade = unidade;
+        this.papelOperacional = papelOperacional;
         this.status = "ATIVO";
-        this.dataInicio = LocalDateTime.now(ZoneOffset.UTC); // Inicializa com a data atual
+        this.dataInicio = LocalDateTime.now(ZoneOffset.UTC);
         this.criadoPor = criadoPor;
         this.criadoEm = LocalDateTime.now(ZoneOffset.UTC);
     }
-
-    @Override
-    public UUID obterOrganizacaoId() {
-        return this.organizacao.getId();
+    
+    // Método auxiliar para verificar se a alocação está vigente hoje
+    public boolean isVigente() {
+        if (!"ATIVO".equals(this.status)) return false;
+        LocalDateTime agora = LocalDateTime.now(ZoneOffset.UTC);
+        if (agora.isBefore(this.dataInicio)) return false;
+        return this.dataFim == null || agora.isBefore(this.dataFim);
     }
 }

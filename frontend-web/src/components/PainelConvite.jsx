@@ -1,7 +1,8 @@
 import { useState } from 'react';
 import api from '../api';
 
-export default function PainelConvite() {
+// NOVO: Recebendo a prop onConviteAceito
+export default function PainelConvite({ onConviteAceito }) {
   const [codigo, setCodigo] = useState('');
   const [mensagem, setMensagem] = useState(null);
   const [loading, setLoading] = useState(false);
@@ -12,8 +13,19 @@ export default function PainelConvite() {
     setMensagem(null);
     try {
       const response = await api.post(`/convites/${codigo}/aceitar`);
-      setMensagem({ tipo: 'sucesso', texto: response.data.payload });
+      
+      // Ajuste de segurança para pegar o payload caso a resposta mude
+      const textoSucesso = response.data?.payload || response.data || 'Convite aceito com sucesso!';
+      setMensagem({ tipo: 'sucesso', texto: textoSucesso });
       setCodigo(''); // Limpa o campo após sucesso
+
+      // NOVO: Avisa o App.jsx para recarregar o contexto após 1.5 segundos
+      if (onConviteAceito) {
+        setTimeout(() => {
+          onConviteAceito();
+        }, 1500);
+      }
+
     } catch (error) {
       setMensagem({ tipo: 'erro', texto: 'Erro: ' + (error.response?.data?.message || error.message) });
     } finally {
@@ -41,7 +53,7 @@ export default function PainelConvite() {
         </button>
       </div>
       {mensagem && (
-        <p style={{ marginTop: '10px', color: mensagem.tipo === 'sucesso' ? 'green' : 'red', fontWeight: 'bold' }}>{mensagem.texto}</p>
+        <p style={{ marginTop: '10px', color: mensagem.tipo === 'sucesso' ? 'green' : '#d32f2f', fontWeight: 'bold' }}>{mensagem.texto}</p>
       )}
     </div>
   );

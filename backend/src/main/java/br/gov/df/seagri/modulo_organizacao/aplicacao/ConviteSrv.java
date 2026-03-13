@@ -1,7 +1,9 @@
 package br.gov.df.seagri.modulo_organizacao.aplicacao;
 
+import br.gov.df.seagri.modulo_organizacao.dominio.AlocacaoUnidade;
 import br.gov.df.seagri.modulo_organizacao.dominio.Convite;
 import br.gov.df.seagri.modulo_organizacao.dominio.VinculoUsuario;
+import br.gov.df.seagri.modulo_organizacao.infraestrutura.AlocacaoUnidadeDAO;
 import br.gov.df.seagri.modulo_organizacao.infraestrutura.ConviteDAO;
 import br.gov.df.seagri.modulo_organizacao.infraestrutura.VinculoUsuarioDAO;
 import org.springframework.stereotype.Service;
@@ -12,10 +14,12 @@ public class ConviteSrv {
 
     private final ConviteDAO conviteDAO;
     private final VinculoUsuarioDAO vinculoUsuarioDAO;
+    private final AlocacaoUnidadeDAO alocacaoUnidadeDAO; // NOVO: Injetado para gerenciar a lotação
 
-    public ConviteSrv(ConviteDAO conviteDAO, VinculoUsuarioDAO vinculoUsuarioDAO) {
+    public ConviteSrv(ConviteDAO conviteDAO, VinculoUsuarioDAO vinculoUsuarioDAO, AlocacaoUnidadeDAO alocacaoUnidadeDAO) {
         this.conviteDAO = conviteDAO;
         this.vinculoUsuarioDAO = vinculoUsuarioDAO;
+        this.alocacaoUnidadeDAO = alocacaoUnidadeDAO;
     }
 
     @Transactional
@@ -29,22 +33,36 @@ public class ConviteSrv {
             throw new IllegalArgumentException("Este convite já foi utilizado ou está expirado.");
         }
 
-        // 3. Verifica se o usuário já possui vínculo com esta organização
+        // 3. Gerencia o Vínculo Geral (Se não existir, cria. Se existir, reaproveita)
+        VinculoUsuario vinculo;
         boolean jaVinculado = vinculoUsuarioDAO.existsByOrganizacaoIdAndUsuarioId(
                 convite.getOrganizacao().getId(), usuarioId);
         
-        if (jaVinculado) {
-            throw new IllegalArgumentException("Você já faz parte desta organização.");
+        if (!jaVinculado) {
+            // Cria o vínculo oficial usando o papel definido dinamicamente no convite
+            VinculoUsuario novoVinculo = new VinculoUsuario(
+                    convite.getOrganizacao(), 
+                    usuarioId, 
+                    convite.getPapelEsperado(),
+                    usuarioId 
+            );
+            vinculo = vinculoUsuarioDAO.save(novoVinculo);
+        } else {
+            // Como ele já tem vínculo geral com a SEAGRI, buscamos para associar à nova alocação de unidade
+            vinculo = vinculoUsuarioDAO.findByUsuarioId(usuarioId).stream()
+                .filter(v -> v.obterOrganizacaoId().equals(convite.getOrganizacao().getId()))
+                .findFirst()
+                .orElseThrow(() -> new IllegalStateException("Erro ao recuperar vínculo existente."));
         }
 
-        // 4. Cria o vínculo oficial (Corrigido para 4 parâmetros: Organizacao, usuarioId, papel, criadoPor)
-        VinculoUsuario novoVinculo = new VinculoUsuario(
-                convite.getOrganizacao(), 
-                usuarioId, 
-                "PARTICIPANTE",
-                usuarioId // O próprio usuário que aceitou o convite assina a autoria da vinculação
+        // 4. NOVO: Cria a lotação na Unidade Específica amarrada a este convite (ReBAC - RFC-0010)
+        AlocacaoUnidade novaAlocacao = new AlocacaoUnidade(
+                vinculo,
+                convite.getUnidade(),
+                convite.getPapelEsperado(),
+                usuarioId
         );
-        vinculoUsuarioDAO.save(novoVinculo);
+        alocacaoUnidadeDAO.save(novaAlocacao);
 
         // 5. Marca o convite como usado
         convite.setUsado(true);
