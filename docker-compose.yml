@@ -6,6 +6,9 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_INITDB_ARGS: locale-provider=icu  # Alternativa sem locales
+  
+
     ports:
       - "5432:5432"
     volumes:
@@ -40,6 +43,9 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
       KC_LOG: file
       KC_LOG_FILE: /opt/keycloak/logs/keycloak.log
+      KC_LOG_LEVEL: INFO
+      KC_METRICS_ENABLED: true
+
     volumes:
       - ./keycloak/conf:/opt/keycloak/conf
       - ./keycloak/logs:/opt/keycloak/logs
@@ -56,10 +62,14 @@ services:
     ports:
       - "8000:8000"
     environment:
+      - CUDA_VISIBLE_DEVICES=-1
+      - TF_CPP_MIN_LOG_LEVEL=2
+      - TF_ENABLE_ONEDNN_OPTS=0  # Para evitar warnings de otimização
       - TZ=America/Sao_Paulo # Mantém o fuso horário alinhado
     # Em produção, você pode limitar o uso de CPU/RAM aqui, 
     # pois IA consome processamento, preservando o banco de dados.
     restart: unless-stopped
+
   # backend:
   #   image: openjdk:21-jdk-slim
   #   container_name: seagri_backend
