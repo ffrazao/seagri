@@ -20,7 +20,7 @@ export default function PainelRegistro({ organizacaoId, unidadeId, onRegistroSuc
 
   const iniciarCamera = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: false });
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
       if (videoRef.current) {
         videoRef.current.srcObject = stream;
       }
@@ -28,7 +28,7 @@ export default function PainelRegistro({ organizacaoId, unidadeId, onRegistroSuc
     } catch (err) {
       console.warn("Câmera negada ou indisponível:", err);
       // Não bloqueamos a tela! Apenas avisamos o estado. (RFC-008)
-      setPermissaoCamera(false); 
+      setPermissaoCamera(false);
     }
   };
 
@@ -40,11 +40,7 @@ export default function PainelRegistro({ organizacaoId, unidadeId, onRegistroSuc
         return;
       }
       navigator.geolocation.getCurrentPosition(
-        (pos) => resolve({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-          precisaoGps: pos.coords.accuracy
-        }),
+        (pos) => resolve({ latitude: pos.coords.latitude, longitude: pos.coords.longitude, precisaoGps: pos.coords.accuracy }),
         (err) => {
           console.warn("GPS negado ou indisponível:", err);
           resolve({ latitude: null, longitude: null, precisaoGps: null });
@@ -71,30 +67,33 @@ export default function PainelRegistro({ organizacaoId, unidadeId, onRegistroSuc
     setMensagem(null);
 
     try {
-      // 1. Coleta o que for possível (Foto e GPS)
+      // 1. Captura a prova de vida no exato milissegundo do clique
       const fotoBase64 = capturarFoto();
-      const coords = await obterLocalizacao();
+      
+      // 2. Captura a geolocalização de forma assíncrona
+      const gps = await obterLocalizacao();
 
-      // 2. Monta o DTO (se negado, enviaremos null, e o Backend julgará o risco)
-      const payload = {
+      // 3. Monta o Evento Bruto Imutável (RFC-008)
+      const eventoBruto = {
         unidadeId: unidadeId,
-        latitude: coords.latitude,
-        longitude: coords.longitude,
-        precisaoGps: coords.precisaoGps,
+        fotoBase64: fotoBase64,
+        latitude: gps.latitude,
+        longitude: gps.longitude,
+        precisaoGps: gps.precisaoGps,
         dispositivoId: navigator.userAgent.substring(0, 128),
         modoRegistro: 'SELF',
-        capturadoEm: new Date().toISOString(),
-        fotoBase64: fotoBase64
+        capturadoEm: new Date().toISOString()
       };
 
-      await api.post(`/orgs/${organizacaoId}/presencas`, payload);
+      // 4. Envia para o Backend Central que fará a interpretação oficial
+      const response = await api.post(`/orgs/${organizacaoId}/presencas`, eventoBruto);
 
-      setMensagem({ tipo: 'sucesso', texto: 'Presença registrada! (Sujeita a auditoria)' });
+      setMensagem({ tipo: 'sucesso', texto: 'Registro enviado para validação.' });
+      
       if (onRegistroSucesso) onRegistroSucesso();
 
     } catch (error) {
-      console.error("Erro ao registrar:", error);
-      setMensagem({ tipo: 'erro', texto: 'Erro de comunicação com o servidor.' });
+      setMensagem({ tipo: 'erro', texto: error.message || 'Falha ao comunicar com o servidor.' });
     } finally {
       setLoading(false);
     }
@@ -106,31 +105,54 @@ export default function PainelRegistro({ organizacaoId, unidadeId, onRegistroSuc
         Posicione seu rosto na câmera e clique em Registrar.
       </p>
 
-      {/* Exibição condicional da câmera */}
-      <div style={{ marginBottom: '20px' }}>
-        {permissaoCamera ? (
-          <video ref={videoRef} autoPlay playsInline style={{ width: '100%', maxWidth: '300px', borderRadius: '8px', transform: 'scaleX(-1)' }} />
-        ) : (
-          <div style={{ width: '100%', maxWidth: '300px', height: '225px', background: '#ffebee', border: '1px dashed #c62828', margin: 'auto', display: 'flex', alignItems: 'center', justifyContent: 'center', borderRadius: '8px', color: '#c62828', fontWeight: 'bold' }}>
-            📸 Câmera Negada
-          </div>
-        )}
-        <canvas ref={canvasRef} style={{ display: 'none' }} />
+      {/* Câmera Espelho Circular */}
+      <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '20px' }}>
+        <canvas ref={canvasRef} style={{ display: 'none' }}></canvas>
+        <video 
+          ref={videoRef} 
+          autoPlay 
+          playsInline 
+          style={{ 
+            width: '100%', 
+            maxWidth: '250px', 
+            borderRadius: '50%', // Transforma o vídeo em um círculo perfeito
+            border: '4px solid #007bff', 
+            transform: 'scaleX(-1)', // Espelha a imagem para o usuário
+            objectFit: 'cover',
+            aspectRatio: '1/1'
+          }} 
+        ></video>
       </div>
 
-      {mensagem && (
-        <div style={{ padding: '10px', marginBottom: '15px', borderRadius: '4px', background: mensagem.tipo === 'erro' ? '#ffebee' : '#e8f5e9', color: mensagem.tipo === 'erro' ? '#c62828' : '#2e7d32' }}>
-          {mensagem.texto}
-        </div>
+      {!permissaoCamera && (
+        <p style={{ color: 'red', fontSize: '12px' }}>Acesso à câmera bloqueado. O registro não poderá ser validado.</p>
       )}
 
-      <button
-        onClick={handleRegistrar}
+      {/* O Comando Único */}
+      <button 
+        onClick={handleRegistrar} 
         disabled={loading}
-        style={{ background: '#0056b3', color: '#fff', border: 'none', padding: '10px 20px', fontSize: '16px', borderRadius: '4px', cursor: loading ? 'not-allowed' : 'pointer' }}
+        style={{ 
+          padding: '15px 40px', 
+          fontSize: '18px', 
+          fontWeight: 'bold', 
+          background: loading ? '#ccc' : '#28a745', 
+          color: '#fff', 
+          border: 'none', 
+          borderRadius: '4px', 
+          cursor: loading ? 'not-allowed' : 'pointer',
+          width: '100%',
+          maxWidth: '250px'
+        }}
       >
-        {loading ? 'Enviando Registro...' : 'Registrar Presença'}
+        {loading ? 'Enviando...' : 'Registrar'}
       </button>
+
+      {mensagem && (
+        <p style={{ marginTop: '20px', fontWeight: 'bold', color: mensagem.tipo === 'sucesso' ? 'green' : '#d32f2f' }}>
+          {mensagem.texto}
+        </p>
+      )}
     </div>
   );
 }

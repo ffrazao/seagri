@@ -1,13 +1,33 @@
 spring:
   application:
     name: seagri-backend
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  transaction:
+    default-timeout: 30  # Timeout padrão de transações (segundos)
+  
+  # Timeouts de requisição
+  mvc:
+    async:
+      request-timeout: 30000  # 30 segundos
   
   # Configuração de conexão com o banco de dados isolado do backend
   datasource:
-    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${BACKEND_DB_NAME:backend_db}
-    username: ${BACKEND_DB_USER:backend_user}
-    password: ${BACKEND_DB_PASSWORD:backend_pass}
+    url: jdbc:postgresql://${DB_HOST:localhost}:5432/${BACKEND_BD:backend}
+    username: ${BACKEND_USU:backend}
+    password: ${BACKEND_SEN:backend}
     driver-class-name: org.postgresql.Driver
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 5
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      pool-name: Seagri-Hikari-Pool
+      leak-detection-threshold: 60000  # Detecta conexões vazadas (60s)
+      validation-timeout: 5000
+      connection-test-query: SELECT 1
 
   # O Flyway vai gerenciar as criações de tabelas automaticamente
   flyway:
@@ -16,14 +36,25 @@ spring:
 
   # Configuração do JPA/Hibernate
   jpa:
+    open-in-view: false
     hibernate:
       # NUNCA usar 'update' ou 'create' em produção. O Flyway é o dono do schema!
       ddl-auto: validate 
-    show-sql: true # Mostra as consultas no console durante o dev
+      jdbc:
+        batch_size: 20
+        order_inserts: true
+        order_updates: true
+    show-sql: false # Mostra as consultas no console durante o dev
     properties:
       hibernate:
         format_sql: true
-        dialect: org.hibernate.dialect.PostgreSQLDialect
+        default_schema: public  # Explícito é melhor que implícito
+        connection:
+          characterEncoding: utf-8
+          useUnicode: true
+        jdbc:
+          lob:
+            non_contextual_creation: true  # Evita warning no PostgreSQL
 
   # Configuração de Segurança e Integração com o Keycloak (Resource Server)
   security:
@@ -35,3 +66,136 @@ spring:
 
 server:
   port: 8081
+  error:
+    whitelabel:
+      enabled: false
+    path: /error
+
+# ============================================
+# CONFIGURAÇÕES DO ACTUATOR
+# ============================================
+management:
+  # Endpoints expostos via HTTP
+  endpoints:
+    web:
+      # Caminho base para os endpoints do actuator
+      base-path: /actuator
+      exposure:
+        # Em dev será sobrescrito pelo application-dev.yml
+        include: health,info,metrics
+        exclude: env,beans
+      # CORS para o actuator (se necessário)
+      cors:
+        allowed-origins: "*"
+        allowed-methods: "GET,POST"
+  
+  # Configurações específicas por endpoint
+  endpoint:
+    health:
+      show-details: always
+      show-components: always
+      # Inclui detalhes do disco e banco de dados
+      status:
+        http-mapping:
+          down: 503
+          out-of-service: 503
+    info:
+      enabled: true
+    metrics:
+      enabled: true
+      # Tags comuns para todas as métricas
+      tags:
+        application: ${spring.application.name}
+        environment: ${spring.profiles.active}
+    prometheus:
+      enabled: true
+    # Endpoints sensíveis desabilitados por padrão
+    shutdown:
+      enabled: false
+    env:
+      enabled: false
+    beans:
+      enabled: false
+    mappings:
+      enabled: true
+    loggers:
+      enabled: true
+  
+  # Informações customizadas para o endpoint /info
+  info:
+    env:
+      enabled: true
+    build:
+      enabled: true
+    git:
+      enabled: true
+      mode: full
+  
+  # Métricas específicas
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 1m
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 10ms, 50ms, 100ms, 200ms, 500ms, 1s, 2s
+    tags:
+      application: ${spring.application.name}
+      environment: ${spring.profiles.active}
+    # Métricas de Web
+    web:
+      server:
+        request:
+          autotime:
+            enabled: true
+            percentiles: 0.5, 0.9, 0.95, 0.99
+    # Métricas de JPA
+    jpa:
+      enabled: true
+    # Métricas de JDBC
+    jdbc:
+      enabled: true
+    # Métricas de cache
+    cache:
+      enabled: true
+
+# ============================================
+# INFORMAÇÕES DA APLICAÇÃO (para o endpoint /info)
+# ============================================
+info:
+  app:
+    name: ${spring.application.name}
+    description: "SEAGRI - Sistema de Gestão Agropecuária"
+#    version: @project.version@
+#    java:
+#      version: @java.version@
+#    spring-boot:
+#      version: @spring-boot.version@
+#  build:
+#    artifact: @project.artifactId@
+#    name: @project.name@
+#    version: @project.version@
+#    group: @project.groupId@
+#    time: @maven.build.timestamp@
+  contact:
+    email: seagri@df.gov.br
+    website: https://www.seagri.df.gov.br
+
+logging:
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  file:
+    name: logs/application.log
+    max-size: 10MB
+    max-history: 7
+  level:
+    # Atuator logs (útil para debug)
+    org.springframework.boot.actuate: INFO
+
+armazenamento:
+  diretorio:
+    fotos:  "#{systemProperties['user.home'] + '/seagri_fotos'}"

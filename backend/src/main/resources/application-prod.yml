@@ -1,0 +1,203 @@
+# application-prod.yml
+spring:
+  # Configurações de produção
+  jpa:
+    # Desabilita show-sql em produção (performance e segurança)
+    show-sql: false
+    hibernate:
+      ddl-auto: validate  # Mantém validate - NUNCA mudar!
+    properties:
+      hibernate:
+        # Formatação desabilitada em produção (performance)
+        format_sql: false
+        # Otimizações de batch MAIORES em produção
+        jdbc:
+          batch_size: 50  # Maior que em dev
+          batch_versioned_data: true
+        order_inserts: true
+        order_updates: true
+        # Pool de conexões do Hibernate (delegado para Hikari, então pode comentar)
+        # connection:
+        #   pool_size: 10
+        
+        # Cache de segundo nível (se usar)
+        cache:
+          use_second_level_cache: true
+          use_query_cache: true
+          region:
+            factory_class: org.hibernate.cache.jcache.JCacheRegionFactory
+
+  # Pool de conexões - configuração mais agressiva em produção
+  datasource:
+    hikari:
+      maximum-pool-size: ${HIKARI_MAX_POOL_SIZE:20}  # Maior que dev
+      minimum-idle: ${HIKARI_MIN_IDLE:5}
+      connection-timeout: ${HIKARI_CONNECTION_TIMEOUT:30000}
+      idle-timeout: ${HIKARI_IDLE_TIMEOUT:600000}
+      max-lifetime: ${HIKARI_MAX_LIFETIME:1800000}
+      leak-detection-threshold: ${HIKARI_LEAK_DETECTION:60000}
+      pool-name: Seagri-Prod-Pool
+      # Validação mais rigorosa
+      validation-timeout: 3000
+      connection-test-query: SELECT 1
+
+  # Flyway em produção - estratégia de migração segura
+  flyway:
+    enabled: true
+    baseline-on-migrate: false  # false em produção!
+    baseline-version: 1  # Versão base conhecida
+    out-of-order: false  # Não permitir migrações fora de ordem
+    validate-on-migrate: true
+    clean-disabled: true  # NUNCA limpar banco em produção!
+
+  # Segurança rigorosa
+  security:
+    oauth2:
+      resourceserver:
+        jwt:
+          issuer-uri: ${KEYCLOAK_ISSUER_URI}  # Obrigatório via env
+          # Opcional: chave pública para validação
+          # public-key-location: ${JWT_PUBLIC_KEY}
+
+# Server - configurações de produção
+server:
+  port: ${SERVER_PORT:8443}
+  # SSL obrigatório em produção
+  ssl:
+    key-store: ${SSL_KEY_STORE:/etc/secrets/keystore.p12}
+    key-store-password: ${SSL_KEY_PASSWORD}
+    key-store-type: PKCS12
+    key-alias: ${SSL_KEY_ALIAS:tomcat}
+    enabled: true
+    # Protocolos e ciphers seguros
+    protocol: TLS
+    enabled-protocols: TLSv1.3,TLSv1.2
+    ciphers: TLS_ECDHE_ECDSA_WITH_AES_256_GCM_SHA384,TLS_ECDHE_RSA_WITH_AES_256_GCM_SHA384
+  
+  # Configurações do Tomcat em produção
+  tomcat:
+    # Conexões
+    max-connections: ${TOMCAT_MAX_CONNECTIONS:10000}
+    max-threads: ${TOMCAT_MAX_THREADS:200}
+    min-spare-threads: ${TOMCAT_MIN_SPARE:20}
+    accept-count: ${TOMCAT_ACCEPT_COUNT:100}
+    connection-timeout: ${TOMCAT_CONNECTION_TIMEOUT:10000}
+    
+    # Configurações de acesso
+    accesslog:
+      enabled: true
+      directory: /var/log/seagri/access
+      pattern: combined
+      rotate: true
+      rename-on-rotate: true
+    
+    # Compressão para reduzir banda
+    compression: on
+    compression-min-size: 1024
+    compressable-mime-types: text/html,text/xml,text/plain,text/css,application/javascript,application/json
+
+  # Headers de segurança
+  error:
+    whitelabel:
+      enabled: false  # Não mostrar erros Spring
+    path: /error
+    include-stacktrace: never  # NÃO incluir stacktrace em respostas
+  
+  # HTTP/2 (se suportado)
+  http2:
+    enabled: true
+
+# ============================================
+# ACTUATOR EM PRODUÇÃO - MODO RESTRITO
+# ============================================
+management:
+  server:
+    port: ${MANAGEMENT_PORT:8082}
+    address: ${MANAGEMENT_ADDRESS:127.0.0.1}
+    ssl:
+      enabled: false
+  endpoints:
+    web:
+      base-path: /manage
+      exposure:
+        include: health,info,metrics,prometheus
+        exclude: env,beans,heapdump,threaddump,shutdown,configprops,flyway
+  endpoint:
+    health:
+      show-details: when-authorized
+      show-components: when-authorized
+      roles: ADMIN
+      probes:
+        enabled: true
+    info:
+      enabled: true
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+    env:
+      enabled: false
+    beans:
+      enabled: false
+    shutdown:
+      enabled: false
+    heapdump:
+      enabled: false
+    threaddump:
+      enabled: false
+    loggers:
+      enabled: true  # Permite alterar logs em produção (com controle)
+      roles: ADMIN
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+        step: 1m
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+      slo:
+        http.server.requests: 10ms, 50ms, 100ms, 200ms, 500ms, 1s, 2s
+    tags:
+      application: ${spring.application.name}
+      environment: production
+    web:
+      server:
+        request:
+          autotime:
+            enabled: true
+            percentiles: 0.5, 0.9, 0.95, 0.99
+    jpa:
+      enabled: true
+    jdbc:
+      enabled: true
+
+# Logging em produção - estruturado e rotacionado
+logging:
+  level:
+    # Apenas erros e warnings
+    ROOT: WARN
+    br.gov.df.seagri: INFO  # INFO para sua aplicação
+    org.springframework: WARN
+    org.hibernate: WARN
+    org.flywaydb: INFO
+    com.zaxxer.hikari: WARN
+    org.springframework.boot.actuate: ERROR
+    io.micrometer: WARN
+    
+  pattern:
+    # JSON em produção para integração com ferramentas de log
+    file: '{"timestamp":"%d{yyyy-MM-dd HH:mm:ss.SSS}","level":"%p","thread":"%t","logger":"%c","message":"%m"}%n'
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"  # Simples no console
+  
+  file:
+    name: ${LOG_PATH:/var/log/seagri}/application.log
+    max-size: 100MB  # Maior que dev
+    max-history: 30  # 30 dias de histórico
+    total-size-cap: 2GB
+  
+  logback:
+    rollingpolicy:
+      max-history: 30
+      max-file-size: 100MB
+      total-size-cap: 2GB

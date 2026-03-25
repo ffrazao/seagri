@@ -1,6 +1,9 @@
 package br.gov.df.seagri.dominio_central.infraestrutura;
 
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Value;
+
+import lombok.extern.slf4j.Slf4j;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
@@ -8,23 +11,36 @@ import java.nio.file.Paths;
 import java.util.Base64;
 import java.util.UUID;
 
+import jakarta.annotation.PostConstruct;
+
 @Service
+@Slf4j
 public class ArmazenamentoLocalSrv {
 
-    private final Path diretorioRaiz = Paths.get(System.getProperty("user.home"), "seagri_biometria");
+    @Value("${armazenamento.diretorio.fotos:#{systemProperties['user.home'] + '/seagri_fotos'}}")
+    private String diretorioRaiz;
 
-    public ArmazenamentoLocalSrv() {
+    private Path getDiretorioRaiz() {
+        return this.diretorioRaiz == null ? null : Paths.get(this.diretorioRaiz);
+    }
+
+    @PostConstruct
+    public void init() {
+        System.out.println(diretorioRaiz);
         try {
-            if (!Files.exists(diretorioRaiz)) {
-                Files.createDirectories(diretorioRaiz);
+            log.debug("diretorioRaiz: [{}]", diretorioRaiz);
+            if (!Files.exists(getDiretorioRaiz())) {
+                log.trace("Criando o diretório raiz das fotos em {}", diretorioRaiz);
+                Files.createDirectories(getDiretorioRaiz());
             }
         } catch (IOException e) {
-            System.err.println("❌ Erro fatal ao criar diretório de biometria: " + e.getMessage());
+            log.error("❌ Erro fatal ao criar diretório de biometria: {}", e.getMessage());
         }
     }
 
     public UUID salvarFotoBase64(String fotoBase64) {
         if (fotoBase64 == null || fotoBase64.isEmpty()) {
+            log.debug("fotoBase64 vazio ou não informado");
             return null;
         }
 
@@ -43,24 +59,24 @@ public class ArmazenamentoLocalSrv {
 
             // 4. Salva no disco (Garante a imutabilidade gerando um UUID único para o arquivo)
             UUID referenciaImagem = UUID.randomUUID();
-            Path caminhoArquivo = diretorioRaiz.resolve(referenciaImagem.toString() + ".jpg");
+            Path caminhoArquivo = getDiretorioRaiz().resolve(referenciaImagem.toString() + ".jpg");
 
             Files.write(caminhoArquivo, bytesImagem);
             
-            System.out.println("💾 FOTO SALVA COM SUCESSO NO DISCO: " + caminhoArquivo.toString());
+            log.debug("💾 FOTO SALVA COM SUCESSO NO DISCO: {}", caminhoArquivo.toString());
 
             return referenciaImagem;
 
         } catch (IllegalArgumentException e) {
-            System.err.println("❌ ERRO DE DECODIFICAÇÃO BASE64: A imagem não veio no formato correto.");
+            log.error("❌ ERRO DE DECODIFICAÇÃO BASE64: A imagem não veio no formato correto.");
             e.printStackTrace();
             throw new RuntimeException("Falha de formato da imagem", e);
         } catch (IOException e) {
-            System.err.println("❌ ERRO DE GRAVAÇÃO NO DISCO: O Java não tem permissão para salvar na pasta.");
+            log.error("❌ ERRO DE GRAVAÇÃO NO DISCO: O Java não tem permissão para salvar na pasta.");
             e.printStackTrace();
             throw new RuntimeException("Falha de gravação de arquivo", e);
         } catch (Exception e) {
-            System.err.println("❌ ERRO DESCONHECIDO NO ARMAZENAMENTO.");
+            log.error("❌ ERRO DESCONHECIDO NO ARMAZENAMENTO.");
             e.printStackTrace();
             throw new RuntimeException("Erro interno no armazenamento", e);
         }
@@ -68,16 +84,24 @@ public class ArmazenamentoLocalSrv {
 
     // Método para ler a imagem física e devolvê-la para a web
     public byte[] recuperarFoto(UUID referenciaImagem) {
-        if (referenciaImagem == null) return null;
+        if (referenciaImagem == null) {
+            log.debug("ID de Referência da imagem não informado");
+            return null;
+        }
+
         try {
-            Path caminhoArquivo = diretorioRaiz.resolve(referenciaImagem.toString() + ".jpg");
-            if (java.nio.file.Files.exists(caminhoArquivo)) {
-                return java.nio.file.Files.readAllBytes(caminhoArquivo);
+            Path caminhoArquivo = getDiretorioRaiz().resolve(referenciaImagem.toString() + ".jpg");
+            if (Files.exists(caminhoArquivo)) {
+                byte[] result = Files.readAllBytes(caminhoArquivo);
+                log.debug("ID de Referência da imagem {} encontrado, tamanho {}.", referenciaImagem.toString(), result.length);
+                return result;
             }
+            log.debug("ID de Referência ({}) não encontrado no disco", referenciaImagem.toString());
             return null;
         } catch (IOException e) {
-            System.err.println("❌ Erro ao ler imagem do disco: " + e.getMessage());
+            log.error("❌ Erro ao ler imagem do disco: " + e.getMessage());
             throw new RuntimeException("Falha ao ler evidência biométrica", e);
         }
     }
+
 }

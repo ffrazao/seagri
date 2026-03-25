@@ -1,6 +1,6 @@
 plugins {
     id 'java'
-    id 'org.springframework.boot' version '3.2.3'
+    id 'org.springframework.boot' version '3.5.11'
     id 'io.spring.dependency-management' version '1.1.4'
 }
 
@@ -8,7 +8,9 @@ group = 'br.gov.df.seagri'
 version = '0.0.1-SNAPSHOT'
 
 java {
-    sourceCompatibility = '21'
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 configurations {
@@ -36,26 +38,43 @@ dependencies {
     implementation 'org.springframework.boot:spring-boot-starter-data-jpa'
     runtimeOnly 'org.postgresql:postgresql' // Driver do Postgres
     
-    // Migrações de Banco de Dados
+    // Migrações de Banco de Dados 
     implementation 'org.flywaydb:flyway-core'
-    // A linha abaixo foi removida:
-    // implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'org.flywaydb:flyway-database-postgresql'
+
+    // Actuator para monitoramento
+    implementation 'org.springframework.boot:spring-boot-starter-actuator'
+    
+    // Micrometer para métricas avançadas (opcional)
+    implementation 'io.micrometer:micrometer-tracing-bridge-brave'
+    implementation 'io.micrometer:micrometer-registry-prometheus' // Para Prometheus
     
     // Ferramentas de Produtividade (Lombok e DevTools)
     compileOnly 'org.projectlombok:lombok'
     annotationProcessor 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
 
+    // MapStruct para mapeamento automático de DTOs
+    implementation 'org.mapstruct:mapstruct:1.6.3'
+    annotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
+    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0' // Integra Lombok e MapStruct
+
     // Testes
     testImplementation 'org.springframework.boot:spring-boot-starter-test'
     testImplementation 'org.springframework.security:spring-security-test'
-
-    // MapStruct para mapeamento automático de DTOs
-    implementation 'org.mapstruct:mapstruct:1.5.5.Final'
-    annotationProcessor 'org.mapstruct:mapstruct-processor:1.5.5.Final'
-    annotationProcessor 'org.projectlombok:lombok-mapstruct-binding:0.2.0' // Integra Lombok e MapStruct
+    testAnnotationProcessor 'org.mapstruct:mapstruct-processor:1.6.3'
 }
 
 tasks.named('test') {
     useJUnitPlatform()
+}
+
+tasks.withType(JavaCompile) {
+    options.annotationProcessorGeneratedSourcesDirectory = file("$buildDir/generated/sources/annotationProcessor/java/main")
+}
+
+bootRun {
+    jvmArgs = [
+        "-agentlib:jdwp=transport=dt_socket,server=y,suspend=n,address=*:5005"
+    ]
 }

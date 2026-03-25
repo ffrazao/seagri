@@ -1,0 +1,140 @@
+# application-dev.yml
+
+spring:
+  jpa:
+    hibernate:
+      jdbc:
+        generate_statistics: true  # apenas em dev
+    show-sql: true
+    properties:
+      hibernate:
+        format_sql: true
+        use_sql_comments: true
+        generate_statistics: true
+        session:
+          events:
+            log:
+              LOG_QUERIES_SLOWER_THAN_MS: 500
+        jdbc:
+          batch_size: 10        
+        cache:
+          use_second_level_cache: false
+          use_query_cache: false
+
+  devtools:
+    restart:
+      enabled: true
+      additional-paths: src/main/java
+    livereload:
+      enabled: true
+  thymeleaf:
+    cache: false
+
+# ============================================
+# ACTUATOR EM DEV - MODO COMPLETO
+# ============================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"
+        exclude: ""
+  
+  # UNIFICADO: todas as configurações de endpoint em um único bloco
+  endpoint:
+    shutdown:
+      enabled: true
+    env:
+      enabled: true
+    beans:
+      enabled: true
+    heapdump:
+      enabled: true
+    threaddump:
+      enabled: true
+    configprops:
+      enabled: true
+    flyway:
+      enabled: true
+    liquibase:
+      enabled: true
+    scheduledtasks:
+      enabled: true
+    sessions:
+      enabled: true
+    metrics:
+      enabled: true
+      export:
+        prometheus:
+          enabled: true
+    health:
+      show-details: always
+      show-components: always
+      probes:
+        enabled: true
+  
+  metrics:
+    export:
+      prometheus:
+        step: 10s
+    distribution:
+      percentiles-histogram:
+        http.server.requests: true
+        jvm.gc.pause: true
+      slo:
+        http.server.requests: 1ms, 5ms, 10ms, 25ms, 50ms, 100ms, 250ms, 500ms, 1s
+
+logging:
+  level:
+    ROOT: OFF
+
+    # Sua aplicação
+    br.gov.df.seagri: TRACE
+    
+    # SQL e parâmetros
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql: TRACE
+    
+    # Transações
+    org.springframework: ERROR
+    org.springframework.transaction: DEBUG
+    org.springframework.orm.jpa: DEBUG
+
+    # Actuator - logs detalhados em dev
+    org.springframework.boot.actuate: DEBUG
+    io.micrometer: DEBUG
+ 
+     # Web/Security (opcional - pode ser verboso)
+    org.springframework.web: DEBUG
+    org.springframework.security: DEBUG
+
+    org.springframework.web.cors: DEBUG
+    org.springframework.web.servlet.handler: DEBUG
+    
+    # Pool de conexões
+    #com.zaxxer.hikari: WARN
+    #com.zaxxer.hikari.pool: WARN
+    
+    # Flyway (útil para ver migrações)
+    #org.flywaydb: DEBUG
+
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# CORS mais permissivo em dev
+cors:
+  debug: false
+  allowed-origins: 
+    - http://localhost:5173
+    - http://localhost:3000
+    - http://localhost:4200
+    - http://127.0.0.1:5500
+  allowed-methods: 
+    - GET
+    - POST
+    - PUT
+    - DELETE
+    - OPTIONS
+    - PATCH
+  allowed-headers: "*"
+  allow-credentials: true

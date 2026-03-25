@@ -58,11 +58,11 @@ public abstract class BaseCrudTenantSrv<T extends EntidadeBase & PertenceOrganiz
 
     @Override
     public List<T> buscarTudoComFiltro(UUID organizacaoId, Specification<T> filtro) {
-        return dao.findAll(Specification.where(filtroTenant(organizacaoId)).and(filtro));
+        return dao.findAll(filtroTenant(organizacaoId).and(filtro));
     }
 
     @Override
     public Page<T> buscarTudoComFiltro(UUID organizacaoId, Specification<T> filtro, Pageable pageable) {
-        return dao.findAll(Specification.where(filtroTenant(organizacaoId)).and(filtro), pageable);
+        return dao.findAll(filtroTenant(organizacaoId).and(filtro), pageable);
     }
 }
