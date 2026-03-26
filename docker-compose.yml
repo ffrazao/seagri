@@ -1,14 +1,15 @@
 services:
+
   postgres:
     image: postgres:16-alpine
     container_name: postgres_db
+    user: "999:999"  # Usuário postgres no Alpine (UID 999)
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
-      POSTGRES_INITDB_ARGS: locale-provider=icu  # Alternativa sem locales
-  
-
+      POSTGRES_INITDB_ARGS: "--locale-provider=icu --icu-locale=pt-BR"  # Alternativa sem locales
+      POSTGRES_LOCALE: "pt_BR.UTF-8"
     ports:
       - "5432:5432"
     volumes:
@@ -17,12 +18,12 @@ services:
       - ./postgres/logs:/var/log/postgresql
       - ./postgres/conf:/etc/postgresql-custom
       - ./.env:/docker-entrypoint-initdb.d/.env:ro
-#    command: >
-#      postgres
-#      -c logging_collector=on
-#      -c log_directory=/var/log/postgresql
-#      -c log_filename=postgresql.log
-#      -c log_file_mode=0666
+    command: >
+      postgres
+      -c logging_collector=on
+      -c log_directory=/var/log/postgresql
+      -c log_filename=postgresql.log
+      -c log_file_mode=0666
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
       interval: 10s
@@ -45,7 +46,6 @@ services:
       KC_LOG_FILE: /opt/keycloak/logs/keycloak.log
       KC_LOG_LEVEL: INFO
       KC_METRICS_ENABLED: true
-
     volumes:
       - ./keycloak/conf:/opt/keycloak/conf
       - ./keycloak/logs:/opt/keycloak/logs
@@ -54,6 +54,7 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+
   motor-biometrico:
     build: 
       context: ./biometria
@@ -70,15 +71,15 @@ services:
     # pois IA consome processamento, preservando o banco de dados.
     restart: unless-stopped
 
-  # backend:
-  #   image: openjdk:21-jdk-slim
-  #   container_name: seagri_backend
-  #   ports:
-  #     - "8081:8080"
-  #   environment:
-  #     SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${BACKEND_BD:-backend}
-  #     SPRING_DATASOURCE_USERNAME: ${BACKEND_USU:-backend}
-  #     SPRING_DATASOURCE_PASSWORD: ${BACKEND_SEN:-backend}
-  #   depends_on:
-  #     postgres:
-  #       condition: service_healthy
+#  backend:
+#    image: openjdk:21-jdk-slim
+#    container_name: seagri_backend
+#    ports:
+#      - "8081:8080"
+#    environment:
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${BACKEND_BD:-backend}
+#      SPRING_DATASOURCE_USERNAME: ${BACKEND_USU:-backend}
+#      SPRING_DATASOURCE_PASSWORD: ${BACKEND_SEN:-backend}
+#    depends_on:
+#      postgres:
+#        condition: service_healthy
