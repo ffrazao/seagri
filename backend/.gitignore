@@ -54,8 +54,8 @@ Thumbs.db
 # =========================
 # Logs de aplicação
 # =========================
-logs/
-*.log
+logs/*
+!logs/.gitkeep
 
 # =========================
 # Arquivos temporários
