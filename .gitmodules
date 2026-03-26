@@ -7,6 +7,6 @@
 [submodule "biometria"]
 	path = biometria
 	url = git@github.com:ffrazao/ppp_biometria.git
-[submodule "frontend-web"]
-	path = frontend-web
-	url = git@github.com:ffrazao/ppp_frontend-web.git
+[submodule "keycloak"]
+	path = keycloak
+	url = git@github.com:ffrazao/ppp_keycloak.git
