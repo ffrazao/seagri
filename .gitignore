@@ -1,6 +1,4 @@
 .env
-*/data/
 
-**/logs/
+**/logs/*
 !**/logs/.gitkeep
-
