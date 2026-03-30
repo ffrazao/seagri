@@ -78,6 +78,8 @@ services:
       - TZ=America/Sao_Paulo # Mantém o fuso horário alinhado
     # Em produção, você pode limitar o uso de CPU/RAM aqui, 
     # pois IA consome processamento, preservando o banco de dados.
+    volumes:
+      - ./biometria/logs:/app/logs
     restart: unless-stopped
 
 #  backend:
