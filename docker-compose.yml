@@ -36,6 +36,8 @@ services:
       context: ./keycloak
       dockerfile: Dockerfile
     container_name: keycloak_service
+    env_file:
+      - .env
     environment:
       KC_DB: postgres
       KC_DB_URL: jdbc:postgresql://postgres:5432/${KEYCLOAK_BD:-keycloak}
@@ -43,8 +45,6 @@ services:
       KC_DB_PASSWORD: ${KEYCLOAK_SEN:-keycloak}
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
-      KC_HOSTNAME_STRICT: "false"
-      KC_HOSTNAME_STRICT_HTTPS: "false"
       KC_HTTP_ENABLED: "true"
       KC_HOSTNAME: localhost
       KC_LOG: "console,file"
@@ -55,7 +55,6 @@ services:
     volumes:
       - ./keycloak/conf:/opt/keycloak/conf
       - ./keycloak/logs:/opt/keycloak/logs
-      - ./keycloak/data/import:/opt/keycloak/data/import:ro
       - ./keycloak/providers:/opt/keycloak/providers:ro
       - ./keycloak/themes:/opt/keycloak/themes:ro
     ports:
