@@ -1,0 +1,21 @@
+{
+	"folders": [
+		{
+			"name": "backend",
+			"path": "backend"
+		},
+		{
+			"name": "frontend-web",
+			"path": "frontend-web"
+		},
+		{
+			"name": "biometria",
+			"path": "biometria"
+		},
+		{
+			"name": "keycloak",
+			"path": "keycloak"
+		}
+	],
+	"settings": {}
+}
