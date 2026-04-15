@@ -81,6 +81,20 @@ services:
       - ./biometria/logs:/app/logs
     restart: unless-stopped
 
+  seaweedfs:
+    build: 
+      context: ./seaweedfs
+      dockerfile: Dockerfile
+    container_name: seagri_storage
+    environment:
+      - TZ=America/Sao_Paulo
+    ports:
+      - "8333:8333"
+      - "9333:9333"
+    volumes:
+      - ./seaweedfs/data:/data
+    restart: unless-stopped
+
 #  backend:
 #    image: openjdk:21-jdk-slim
 #    container_name: seagri_backend

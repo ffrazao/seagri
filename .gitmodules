@@ -13,3 +13,6 @@
 [submodule "frontend-web"]
 	path = frontend-web
 	url = git@github.com:ffrazao/ppp_frontend-web.git
+[submodule "seaweedfs"]
+	path = seaweedfs
+	url = git@github.com:ffrazao/ppp_seaweedfs.git
