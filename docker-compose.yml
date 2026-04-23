@@ -41,9 +41,11 @@ services:
     environment:
       # TIPO DE BANCO: Mantido fixo pois define o driver interno do Keycloak
       KC_DB: postgres
+
+      POSTGRES_URL: postgres  # Sobrescreve o localhost do .env
       
       # CONEXÃO COM O BANCO
-      KC_DB_URL: jdbc:postgresql://${POSTGRES_URL:-postgres}:5432/${KEYCLOAK_BD:-keycloak}
+      KC_DB_URL: jdbc:postgresql://postgres:5432/${KEYCLOAK_BD:-keycloak}
       KC_DB_USERNAME: ${KEYCLOAK_USU:-keycloak}
       KC_DB_PASSWORD: ${KEYCLOAK_SEN:-keycloak}
       
@@ -88,6 +90,7 @@ services:
     # pois IA consome processamento, preservando o banco de dados.
     volumes:
       - ./biometria/logs:/app/logs
+      - ./biometria/weights:/root/.deepface/weights
     restart: unless-stopped
 
   seaweedfs:
@@ -99,6 +102,8 @@ services:
       - .env
     environment:
       - TZ=America/Sao_Paulo
+      - S3_ENDPOINT=http://seagri_storage:8333
+      - POSTGRES_URL=postgres
     ports:
       - "8333:8333" # S3 API
       - "9333:9333" # Painel Master
