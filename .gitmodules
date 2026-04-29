@@ -4,9 +4,6 @@
 [submodule "backend"]
 	path = backend
 	url = git@github.com:ffrazao/ppp_backend.git
-[submodule "biometria"]
-	path = biometria
-	url = git@github.com:ffrazao/ppp_biometria.git
 [submodule "keycloak"]
 	path = keycloak
 	url = git@github.com:ffrazao/ppp_keycloak.git
@@ -16,3 +13,6 @@
 [submodule "seaweedfs"]
 	path = seaweedfs
 	url = git@github.com:ffrazao/ppp_seaweedfs.git
+[submodule "facenet"]
+	path = facenet
+	url = git@github.com:ffrazao/ppp_biometria.git

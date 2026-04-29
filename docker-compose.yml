@@ -1,9 +1,13 @@
 services:
 
-  postgres:
-    build: ./postgres
-    container_name: postgres_db
-    #user: "999:999"  # Usuário postgres no Alpine (UID 999)
+  banco:
+    build:
+      context: ./postgres
+      dockerfile: Dockerfile
+    container_name: banco_postgres
+    image: banco_postgres_img:latest
+    env_file:
+      - .env
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-postgres}
       POSTGRES_USER: ${POSTGRES_USER:-postgres}
@@ -26,26 +30,27 @@ services:
           -c log_filename=postgresql.log 
           -c log_file_mode=0666"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
       interval: 10s
       timeout: 5s
       retries: 5
 
-  keycloak:
+  iam:
     build:
       context: ./keycloak
       dockerfile: Dockerfile
-    container_name: keycloak_service
+    container_name: iam_keycloak
+    image: iam_keycloak_img:latest
     env_file:
       - .env
     environment:
       # TIPO DE BANCO: Mantido fixo pois define o driver interno do Keycloak
       KC_DB: postgres
 
-      POSTGRES_URL: postgres  # Sobrescreve o localhost do .env
+      #POSTGRES_URL: banco  # Sobrescreve o localhost do .env
       
       # CONEXÃO COM O BANCO
-      KC_DB_URL: jdbc:postgresql://postgres:5432/${KEYCLOAK_BD:-keycloak}
+      KC_DB_URL: jdbc:postgresql://banco:5432/${KEYCLOAK_BD:-keycloak}
       KC_DB_USERNAME: ${KEYCLOAK_USU:-keycloak}
       KC_DB_PASSWORD: ${KEYCLOAK_SEN:-keycloak}
       
@@ -54,7 +59,7 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
       
       # PARAMETRIZAÇÕES DE AMBIENTE (RECOMENDADO)
-      KC_HOSTNAME: ${KC_HOSTNAME:-localhost}
+      KC_HOSTNAME: ${KC_HOSTNAME:-iam}
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
       KC_LOG_LEVEL: ${KC_LOG_LEVEL:-INFO}
       
@@ -63,47 +68,35 @@ services:
       KC_LOG_FILE: /opt/keycloak/logs/keycloak.log
       KC_METRICS_ENABLED: true
       KC_HEALTH_ENABLED: true
+    ports:
+      - "8080:8080"
     volumes:
       - ./keycloak/conf:/opt/keycloak/conf
       - ./keycloak/logs:/opt/keycloak/logs
       - ./keycloak/providers:/opt/keycloak/providers:ro
       - ./keycloak/themes:/opt/keycloak/themes:ro
-    ports:
-      - "8080:8080"
     depends_on:
-      postgres:
+      banco:
         condition: service_healthy
-
-  motor-biometrico:
-    build: 
-      context: ./biometria
-      dockerfile: Dockerfile
-    container_name: seagri_biometria
-    ports:
-      - "8000:8000"
-    environment:
-      - CUDA_VISIBLE_DEVICES=-1
-      - TF_CPP_MIN_LOG_LEVEL=2
-      - TF_ENABLE_ONEDNN_OPTS=0  # Para evitar warnings de otimização
-      - TZ=America/Sao_Paulo # Mantém o fuso horário alinhado
-    # Em produção, você pode limitar o uso de CPU/RAM aqui, 
-    # pois IA consome processamento, preservando o banco de dados.
-    volumes:
-      - ./biometria/logs:/app/logs
-      - ./biometria/weights:/root/.deepface/weights
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      interval: 25s
+      timeout: 10s
+      retries: 5
 
-  seaweedfs:
+  storage:
     build: 
       context: ./seaweedfs
       dockerfile: Dockerfile
-    container_name: seagri_storage
+    container_name: storage_seaweedfs
+    image: storage_seaweedfs_img:latest
     env_file:
       - .env
     environment:
       - TZ=America/Sao_Paulo
-      - S3_ENDPOINT=http://seagri_storage:8333
-      - POSTGRES_URL=postgres
+      - S3_ENDPOINT=http://storage:8333
+      - POSTGRES_URL=banco
     ports:
       - "8333:8333" # S3 API
       - "9333:9333" # Painel Master
@@ -111,9 +104,42 @@ services:
     volumes:
       - ./seaweedfs/data:/data
     depends_on:
-      postgres:
-        condition: service_healthy # Aguarda o banco subir totalmente
+      banco:
+        condition: service_healthy
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:8888/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  biometria:
+    build:
+      context: ./facenet
+      dockerfile: Dockerfile
+    container_name: biometria_facenet
+    image: biometria_facenet_img:latest
+    env_file:
+      - .env
+    environment:
+      - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:--1}
+      - TF_CPP_MIN_LOG_LEVEL=${TF_CPP_MIN_LOG_LEVEL:-2}
+      - TF_ENABLE_ONEDNN_OPTS=${TF_ENABLE_ONEDNN_OPTS:-0}  # Para evitar warnings de otimização
+      - TZ=America/Sao_Paulo # Mantém o fuso horário alinhado
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./facenet/logs:/app/logs
+      - ./facenet/weights:/root/.deepface/weights
+    restart: unless-stopped
+    depends_on:
+      storage:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/api/v1/biometria/verify -H 'Content-Type: application/json' -d '{\"image_base64_1\":\"dummy\",\"image_base64_2\":\"dummy\"}' | grep -Eq '200|400'"]
+      interval: 15s
+      timeout: 10s
+      retries: 5
 
 #  backend:
 #    image: openjdk:21-jdk-slim
@@ -121,9 +147,9 @@ services:
 #    ports:
 #      - "8081:8080"
 #    environment:
-#      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/${BACKEND_BD:-backend}
+#      SPRING_DATASOURCE_URL: jdbc:postgresql://banco:5432/${BACKEND_BD:-backend}
 #      SPRING_DATASOURCE_USERNAME: ${BACKEND_USU:-backend}
 #      SPRING_DATASOURCE_PASSWORD: ${BACKEND_SEN:-backend}
 #    depends_on:
-#      postgres:
+#      banco:
 #        condition: service_healthy
