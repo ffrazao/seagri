@@ -20,15 +20,17 @@ services:
       - ./postgres/logs:/var/log/postgresql
       - ./postgres/conf:/etc/postgresql-custom
       - ./.env:/docker-entrypoint-initdb.d/.env:ro
+    networks:
+      - backend_net
     entrypoint: >
-          sh -c "
-          chown -R postgres:postgres /var/log/postgresql &&
-          chmod -R 700 /var/log/postgresql &&
-          exec docker-entrypoint.sh postgres 
-          -c logging_collector=on 
-          -c log_directory=/var/log/postgresql 
-          -c log_filename=postgresql.log 
-          -c log_file_mode=0666"
+      sh -c "
+      chown -R postgres:postgres /var/log/postgresql &&
+      chmod -R 700 /var/log/postgresql &&
+      exec docker-entrypoint.sh postgres 
+      -c logging_collector=on 
+      -c log_directory=/var/log/postgresql 
+      -c log_filename=postgresql.log 
+      -c log_file_mode=0666"
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
       interval: 10s
@@ -43,6 +45,8 @@ services:
     image: iam_keycloak_img:latest
     env_file:
       - .env
+    networks:
+      - backend_net
     environment:
       # TIPO DE BANCO: Mantido fixo pois define o driver interno do Keycloak
       KC_DB: postgres
@@ -93,6 +97,8 @@ services:
     image: storage_seaweedfs_img:latest
     env_file:
       - .env
+    networks:
+      - backend_net
     environment:
       - TZ=America/Sao_Paulo
       - S3_ENDPOINT=http://storage:8333
@@ -121,6 +127,8 @@ services:
     image: biometria_facenet_img:latest
     env_file:
       - .env
+    networks:
+      - backend_net
     environment:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:--1}
       - TF_CPP_MIN_LOG_LEVEL=${TF_CPP_MIN_LOG_LEVEL:-2}
@@ -131,10 +139,10 @@ services:
     volumes:
       - ./facenet/logs:/app/logs
       - ./facenet/weights:/root/.deepface/weights
-    restart: unless-stopped
     depends_on:
       storage:
         condition: service_healthy
+    restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/api/v1/biometria/verify -H 'Content-Type: application/json' -d '{\"image_base64_1\":\"dummy\",\"image_base64_2\":\"dummy\"}' | grep -Eq '200|400'"]
       interval: 15s
@@ -149,6 +157,8 @@ services:
     image: cache_redis_img:latest
     env_file:
       - .env
+    networks:
+      - backend_net
     ports:
       - "6379:6379"
     volumes:
@@ -156,12 +166,29 @@ services:
       - ./redis/conf/redis.conf:/usr/local/etc/redis/redis.conf:ro
       - ./redis/logs:/var/log/redis
     restart: unless-stopped
-    command: ["redis-server", "/usr/local/etc/redis/redis.conf"]
+    command: >
+      redis-server /usr/local/etc/redis/redis.conf
+      --requirepass ${REDIS_PASSWORD}
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
       interval: 10s
       timeout: 5s
       retries: 5
+
+  cacheview:
+    image: redis/redisinsight:latest
+    container_name: redis_insight
+    networks:
+      - backend_net
+    ports:
+      - "5540:5540"
+    volumes:
+      - ./redisinsight/data:/data
+    restart: unless-stopped
+
+networks:
+  backend_net:
+    driver: bridge
 
 #  backend:
 #    image: openjdk:21-jdk-slim
