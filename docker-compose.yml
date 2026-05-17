@@ -123,6 +123,8 @@ services:
     build:
       context: ./facenet
       dockerfile: Dockerfile
+      args:
+        BIOMETRIA_USUARIO: ${BIOMETRIA_USUARIO:-appbiometria}
     container_name: biometria_facenet
     image: biometria_facenet_img:latest
     env_file:
@@ -131,20 +133,21 @@ services:
       - backend_net
     environment:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:--1}
+      - DEEPFACE_HOME=/home/${BIOMETRIA_USUARIO:-appbiometria}
       - TF_CPP_MIN_LOG_LEVEL=${TF_CPP_MIN_LOG_LEVEL:-2}
       - TF_ENABLE_ONEDNN_OPTS=${TF_ENABLE_ONEDNN_OPTS:-0}  # Para evitar warnings de otimização
       - TZ=America/Sao_Paulo # Mantém o fuso horário alinhado
     ports:
       - "8000:8000"
     volumes:
-      - ./facenet/logs:/app/logs
-      - ./facenet/weights:/root/.deepface/weights
+      - ./facenet/logs:/home/${BIOMETRIA_USUARIO:-appbiometria}/app/logs
+      - ./facenet/weights:/home/${BIOMETRIA_USUARIO:-appbiometria}/.deepface/weights
     depends_on:
       storage:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:8000/api/v1/biometria/verify -H 'Content-Type: application/json' -d '{\"image_base64_1\":\"dummy\",\"image_base64_2\":\"dummy\"}' | grep -Eq '200|400'"]
+      test: ["CMD-SHELL", "curl -sf http://localhost:8000/health || exit 1"]
       interval: 15s
       timeout: 10s
       retries: 5
