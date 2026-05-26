@@ -216,19 +216,27 @@ services:
       - backend_net
     restart: unless-stopped
 
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: backend_spring_java
+    env_file:
+      - .env
+    environment:
+      # Agora o backend aponta para o nome do serviço no Docker, não localhost!
+      SPRING_DATASOURCE_URL: jdbc:postgresql://banco:5432/${BACKEND_BD:-backend}
+      SPRING_DATASOURCE_USERNAME: ${BACKEND_USU:-backend}
+      SPRING_DATASOURCE_PASSWORD: ${BACKEND_SEN:-backend}
+      SPRING_PROFILES_ACTIVE: prod # Força o perfil de produção no container
+    networks:
+      - backend_net
+    depends_on:
+      banco:
+        condition: service_healthy
+    restart: unless-stopped
+
 networks:
   backend_net:
     driver: bridge
-
-#  backend:
-#    image: openjdk:21-jdk-slim
-#    container_name: seagri_backend
-#    ports:
-#      - "8081:8080"
-#    environment:
-#      SPRING_DATASOURCE_URL: jdbc:postgresql://banco:5432/${BACKEND_BD:-backend}
-#      SPRING_DATASOURCE_USERNAME: ${BACKEND_USU:-backend}
-#      SPRING_DATASOURCE_PASSWORD: ${BACKEND_SEN:-backend}
-#    depends_on:
-#      banco:
-#        condition: service_healthy
