@@ -189,6 +189,33 @@ services:
       - ./redisinsight/data:/data
     restart: unless-stopped
 
+  frontend-web:
+    build:
+      context: ./frontend-web
+      dockerfile: Dockerfile
+    container_name: frontend_web_reactjs
+    image: frontend_web_img:latest
+    env_file:
+      - .env
+    environment:
+      # O Vite exige que as variáveis comecem com VITE_ para expô-las ao navegador
+      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+      - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
+    ports:
+      - "${FRONTEND_WEB_PORTA:-5173}:${FRONTEND_WEB_PORTA:-5173}"
+    volumes:
+      # Espelha a sua pasta local de código fonte para dentro do container (Hot Reload)
+      - ./frontend-web:/app
+      
+      # [IMPORTANTE] Volume anônimo para proteger o node_modules
+      # Isso impede que o node_modules compilado no seu Ubuntu sobrescreva 
+      # o node_modules do container (Alpine Linux), o que quebraria o Vite.
+      - /app/node_modules
+      
+    networks:
+      - backend_net
+    restart: unless-stopped
+
 networks:
   backend_net:
     driver: bridge
