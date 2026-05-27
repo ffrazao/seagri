@@ -45,6 +45,7 @@ services:
     image: iam_keycloak_img:latest
     env_file:
       - .env
+      - .env.prod
     networks:
       - backend_net
     environment:
@@ -63,11 +64,13 @@ services:
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
       
       # PARAMETRIZAÇÕES DE AMBIENTE (RECOMENDADO)
-      KC_HOSTNAME: ${KC_HOSTNAME:-iam}
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
       KC_LOG_LEVEL: ${KC_LOG_LEVEL:-INFO}
-      
+      KC_ISSUER_URI: ${KC_ISSUER_URI:-http://localhost:8080/realms/corporativo}
+
       # CONFIGURAÇÕES ESTRUTURAIS DO CONTAINER (Podem ficar fixas)
+      KC_HOSTNAME: host.docker.internal
+      KC_HOSTNAME_STRICT: "false"
       KC_LOG: "console,file"
       KC_LOG_FILE: /opt/keycloak/logs/keycloak.log
       KC_METRICS_ENABLED: true
@@ -216,7 +219,6 @@ services:
       - backend_net
     restart: unless-stopped
 
-
   backend:
     build:
       context: ./backend
@@ -224,12 +226,18 @@ services:
     container_name: backend_spring_java
     env_file:
       - .env
+      - .env.prod
+    ports:
+      - ${BACKEND_PORT:-8081}:${BACKEND_PORT:-8081}
     environment:
       # Agora o backend aponta para o nome do serviço no Docker, não localhost!
       SPRING_DATASOURCE_URL: jdbc:postgresql://banco:5432/${BACKEND_BD:-backend}
       SPRING_DATASOURCE_USERNAME: ${BACKEND_USU:-backend}
       SPRING_DATASOURCE_PASSWORD: ${BACKEND_SEN:-backend}
       SPRING_PROFILES_ACTIVE: prod # Força o perfil de produção no container
+      KC_ISSUER_URI: http://host.docker.internal:8080/realms/corporativo
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - backend_net
     depends_on:
