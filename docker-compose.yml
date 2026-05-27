@@ -1,5 +1,4 @@
 services:
-
   banco:
     build:
       context: ./postgres
@@ -26,13 +25,17 @@ services:
       sh -c "
       chown -R postgres:postgres /var/log/postgresql &&
       chmod -R 700 /var/log/postgresql &&
-      exec docker-entrypoint.sh postgres 
-      -c logging_collector=on 
-      -c log_directory=/var/log/postgresql 
-      -c log_filename=postgresql.log 
+      exec docker-entrypoint.sh postgres
+      -c logging_collector=on
+      -c log_directory=/var/log/postgresql
+      -c log_filename=postgresql.log
       -c log_file_mode=0666"
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-postgres}",
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -53,23 +56,26 @@ services:
       KC_DB: postgres
 
       #POSTGRES_URL: banco  # Sobrescreve o localhost do .env
-      
+
       # CONEXÃO COM O BANCO
       KC_DB_URL: jdbc:postgresql://banco:5432/${KEYCLOAK_BD:-keycloak}
       KC_DB_USERNAME: ${KEYCLOAK_USU:-keycloak}
       KC_DB_PASSWORD: ${KEYCLOAK_SEN:-keycloak}
-      
+
       # CREDENCIAIS DE ADMIN
       KC_BOOTSTRAP_ADMIN_USERNAME: ${KC_BOOTSTRAP_ADMIN_USERNAME:-admin}
       KC_BOOTSTRAP_ADMIN_PASSWORD: ${KC_BOOTSTRAP_ADMIN_PASSWORD:-admin}
-      
+
       # PARAMETRIZAÇÕES DE AMBIENTE (RECOMENDADO)
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
       KC_LOG_LEVEL: ${KC_LOG_LEVEL:-INFO}
       KC_ISSUER_URI: ${KC_ISSUER_URI:-http://localhost:8080/realms/corporativo}
 
-      # CONFIGURAÇÕES ESTRUTURAIS DO CONTAINER (Podem ficar fixas)
+      # O Issuer que o Keycloak vai colocar nos tokens é localhost
+      #KC_HOSTNAME_URL: http://localhost:8080
       KC_HOSTNAME: host.docker.internal
+
+      # CONFIGURAÇÕES ESTRUTURAIS DO CONTAINER (Podem ficar fixas)
       KC_HOSTNAME_STRICT: "false"
       KC_LOG: "console,file"
       KC_LOG_FILE: /opt/keycloak/logs/keycloak.log
@@ -87,13 +93,14 @@ services:
         condition: service_healthy
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
+      test:
+        ["CMD-SHELL", "curl -f http://localhost:8080/health/ready || exit 1"]
       interval: 25s
       timeout: 10s
       retries: 5
 
   storage:
-    build: 
+    build:
       context: ./seaweedfs
       dockerfile: Dockerfile
     container_name: storage_seaweedfs
@@ -138,7 +145,7 @@ services:
       - CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:--1}
       - DEEPFACE_HOME=/home/${BIOMETRIA_USUARIO:-appbiometria}
       - TF_CPP_MIN_LOG_LEVEL=${TF_CPP_MIN_LOG_LEVEL:-2}
-      - TF_ENABLE_ONEDNN_OPTS=${TF_ENABLE_ONEDNN_OPTS:-0}  # Para evitar warnings de otimização
+      - TF_ENABLE_ONEDNN_OPTS=${TF_ENABLE_ONEDNN_OPTS:-0} # Para evitar warnings de otimização
       - TZ=America/Sao_Paulo # Mantém o fuso horário alinhado
     ports:
       - "8000:8000"
@@ -209,12 +216,12 @@ services:
     volumes:
       # Espelha a sua pasta local de código fonte para dentro do container (Hot Reload)
       - ./frontend-web:/app
-      
+
       # [IMPORTANTE] Volume anônimo para proteger o node_modules
-      # Isso impede que o node_modules compilado no seu Ubuntu sobrescreva 
+      # Isso impede que o node_modules compilado no seu Ubuntu sobrescreva
       # o node_modules do container (Alpine Linux), o que quebraria o Vite.
       - /app/node_modules
-      
+
     networks:
       - backend_net
     restart: unless-stopped
@@ -230,13 +237,15 @@ services:
     ports:
       - ${BACKEND_PORT:-8081}:${BACKEND_PORT:-8081}
     environment:
-      # Agora o backend aponta para o nome do serviço no Docker, não localhost!
+      # Use APENAS a variável oficial do Spring Boot
+      SPRING_SECURITY_OAUTH2_RESOURCESERVER_JWT_ISSUER_URI: http://host.docker.internal:8080/realms/corporativo
+      SPRING_PROFILES_ACTIVE: prod
+
       SPRING_DATASOURCE_URL: jdbc:postgresql://banco:5432/${BACKEND_BD:-backend}
-      SPRING_DATASOURCE_USERNAME: ${BACKEND_USU:-backend}
-      SPRING_DATASOURCE_PASSWORD: ${BACKEND_SEN:-backend}
-      SPRING_PROFILES_ACTIVE: prod # Força o perfil de produção no container
-      KC_ISSUER_URI: http://host.docker.internal:8080/realms/corporativo
+
     extra_hosts:
+      # Isso permite que o container 'backend' resolva 'host.docker.internal'
+      # apontando para o IP do seu host (o Ubuntu)
       - "host.docker.internal:host-gateway"
     networks:
       - backend_net
