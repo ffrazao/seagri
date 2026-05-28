@@ -48,14 +48,11 @@ services:
     image: iam_keycloak_img:latest
     env_file:
       - .env
-      - .env.prod
     networks:
       - backend_net
     environment:
       # TIPO DE BANCO: Mantido fixo pois define o driver interno do Keycloak
       KC_DB: postgres
-
-      #POSTGRES_URL: banco  # Sobrescreve o localhost do .env
 
       # CONEXÃO COM O BANCO
       KC_DB_URL: jdbc:postgresql://banco:5432/${KEYCLOAK_BD:-keycloak}
@@ -69,14 +66,13 @@ services:
       # PARAMETRIZAÇÕES DE AMBIENTE (RECOMENDADO)
       KC_HTTP_ENABLED: ${KC_HTTP_ENABLED:-true}
       KC_LOG_LEVEL: ${KC_LOG_LEVEL:-INFO}
-      KC_ISSUER_URI: ${KC_ISSUER_URI:-http://localhost:8080/realms/corporativo}
-
-      # O Issuer que o Keycloak vai colocar nos tokens é localhost
-      #KC_HOSTNAME_URL: http://localhost:8080
-      KC_HOSTNAME: host.docker.internal
+      KC_ISSUER_URI: ${KC_ISSUER_URI:-http://${KC_HOSTNAME:-localhost:8080}/realms/corporativo}
 
       # CONFIGURAÇÕES ESTRUTURAIS DO CONTAINER (Podem ficar fixas)
+      KC_HOSTNAME: localhost
       KC_HOSTNAME_STRICT: "false"
+      KC_HTTP_RELATIVE_PATH: /
+      KC_HOSTNAME_URL: http://localhost:8080
       KC_LOG: "console,file"
       KC_LOG_FILE: /opt/keycloak/logs/keycloak.log
       KC_METRICS_ENABLED: true
@@ -199,32 +195,32 @@ services:
       - ./redisinsight/data:/data
     restart: unless-stopped
 
-  frontend-web:
-    build:
-      context: ./frontend-web
-      dockerfile: Dockerfile
-    container_name: frontend_web_reactjs
-    image: frontend_web_img:latest
-    env_file:
-      - .env
-    environment:
-      # O Vite exige que as variáveis comecem com VITE_ para expô-las ao navegador
-      - VITE_API_BASE_URL=${VITE_API_BASE_URL}
-      - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
-    ports:
-      - "${FRONTEND_WEB_PORTA:-5173}:${FRONTEND_WEB_PORTA:-5173}"
-    volumes:
-      # Espelha a sua pasta local de código fonte para dentro do container (Hot Reload)
-      - ./frontend-web:/app
+  # frontend-web:
+  #   build:
+  #     context: ./frontend-web
+  #     dockerfile: Dockerfile
+  #   container_name: frontend_web_reactjs
+  #   image: frontend_web_img:latest
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     # O Vite exige que as variáveis comecem com VITE_ para expô-las ao navegador
+  #     - VITE_API_BASE_URL=${VITE_API_BASE_URL}
+  #     - VITE_KEYCLOAK_URL=${VITE_KEYCLOAK_URL}
+  #   ports:
+  #     - "${FRONTEND_WEB_PORTA:-5173}:${FRONTEND_WEB_PORTA:-5173}"
+  #   volumes:
+  #     # Espelha a sua pasta local de código fonte para dentro do container (Hot Reload)
+  #     - ./frontend-web:/app
 
-      # [IMPORTANTE] Volume anônimo para proteger o node_modules
-      # Isso impede que o node_modules compilado no seu Ubuntu sobrescreva
-      # o node_modules do container (Alpine Linux), o que quebraria o Vite.
-      - /app/node_modules
+  #     # [IMPORTANTE] Volume anônimo para proteger o node_modules
+  #     # Isso impede que o node_modules compilado no seu Ubuntu sobrescreva
+  #     # o node_modules do container (Alpine Linux), o que quebraria o Vite.
+  #     - /app/node_modules
 
-    networks:
-      - backend_net
-    restart: unless-stopped
+  #   networks:
+  #     - backend_net
+  #   restart: unless-stopped
 
   backend:
     build:
