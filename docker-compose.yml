@@ -200,6 +200,8 @@ services:
       dockerfile: Dockerfile
     container_name: frontend_web_reactjs
     image: frontend_web_img:latest
+    profiles:
+      - "completo"
     env_file:
       - .env
       - .env.docker
@@ -210,4 +212,25 @@ services:
       - /app/node_modules
     networks:
       - frontend_net
+    restart: unless-stopped
+
+  proxy:
+    image: nginx:alpine
+    container_name: proxy_nginx
+    profiles:
+      - "completo"
+    # env_file: # por segurança é melhor não expor variáveis de ambiente para o nginx, mas se necessário, pode ser descomentado
+    #   - .env
+    #   - .env.docker
+    ports:
+      - "80:80"
+    volumes:
+      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/logs:/var/log/nginx
+    networks:
+      - frontend_net
+      - backend_net
+    depends_on:
+      - backend
+      - frontend-web
     restart: unless-stopped
