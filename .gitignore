@@ -3,3 +3,6 @@
 
 **/logs/*
 !**/logs/.gitkeep
+
+# Certificados SSL Locais
+nginx/certs/*.pem
