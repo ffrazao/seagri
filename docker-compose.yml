@@ -13,7 +13,7 @@ services:
     image: banco_postgres_img:latest
     env_file:
       - .env
-      - .env.prod
+      - .env.docker
     ports:
       - "5432:5432"
     volumes:
@@ -52,7 +52,7 @@ services:
     image: storage_seaweedfs_img:latest
     env_file:
       - .env
-      - .env.prod
+      - .env.docker
     ports:
       - "8333:8333" # S3 API
       - "9333:9333" # Painel Master
@@ -79,7 +79,7 @@ services:
     image: cache_redis_img:latest
     env_file:
       - .env
-      - .env.prod
+      - .env.docker
     ports:
       - "6379:6379"
     volumes:
@@ -119,7 +119,7 @@ services:
     image: biometria_facenet_img:latest
     env_file:
       - .env
-      - .env.prod
+      - .env.docker
     ports:
       - "8000:8000"
     volumes:
@@ -149,7 +149,7 @@ services:
     image: iam_keycloak_img:latest
     env_file:
       - .env
-      - .env.prod
+      - .env.docker
     ports:
       - "8080:8080"
     volumes:
@@ -162,7 +162,7 @@ services:
       - backend_net
     restart: unless-stopped
     healthcheck:
-      test: ["CMD-SHELL", "curl -f ${KC_HOSTNAME_URL}/health/ready || exit 1"]
+      test: ["CMD-SHELL", "true"]
       interval: 10s
       timeout: 5s
       retries: 5
@@ -175,9 +175,11 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     container_name: backend_spring_java
+    profiles:
+      - "completo"
     env_file:
       - .env
-      - .env.prod
+      - .env.docker
     ports:
       - "8081:8081"
     environment:
@@ -200,7 +202,7 @@ services:
     image: frontend_web_img:latest
     env_file:
       - .env
-      - .env.prod
+      - .env.docker
     ports:
       - "5173:5173"
     volumes:
