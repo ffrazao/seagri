@@ -219,14 +219,14 @@ services:
     container_name: proxy_nginx
     profiles:
       - "completo"
-    # env_file: # por segurança é melhor não expor variáveis de ambiente para o nginx, mas se necessário, pode ser descomentado
+    env_file: # por segurança é melhor não expor variáveis de ambiente para o nginx, mas se necessário, pode ser descomentado
     #   - .env
-    #   - .env.docker
+      - .env.docker
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
       - ./nginx/logs:/var/log/nginx
       - ./nginx/certs:/etc/nginx/certs:ro # Mapeia a pasta dos certificados
     networks:
@@ -236,3 +236,4 @@ services:
       - backend
       - frontend-web
     restart: unless-stopped
+    command: /bin/sh -c "envsubst < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
