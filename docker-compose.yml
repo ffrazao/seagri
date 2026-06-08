@@ -236,4 +236,4 @@ services:
       - backend
       - frontend-web
     restart: unless-stopped
-    command: /bin/sh -c "envsubst < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
+    command: /bin/sh -c "envsubst '\$APP_DOMAIN \$APP_URL \$APP_PROTOCOL' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"
