@@ -47,6 +47,10 @@ http {
 
         location /realms/ {
             proxy_pass http://iam:8080/realms/;
+
+            proxy_connect_timeout 300s;
+            proxy_send_timeout    300s;
+            proxy_read_timeout    300s;
         }
 
         location /resources/ {

@@ -6,3 +6,6 @@
 
 # Certificados SSL Locais
 nginx/certs/*.pem
+
+# Ignorar o antigo arquivo, o nginx.conf.template é o principal
+nginx/conf/nginx.conf
