@@ -19,7 +19,7 @@ services:
     volumes:
       - ./postgres/logs:/var/log/postgresql
       - ./postgres/conf:/etc/postgresql-custom
-      - ./postgres/data:/var/lib/postgresql/data
+      - ./postgres/data:/var/lib/postgresql
       - ./.env:/docker-entrypoint-initdb.d/.env:ro
       - ./postgres/init-db.sh:/docker-entrypoint-initdb.d/init-db.sh:ro
     networks:
@@ -37,7 +37,7 @@ services:
     entrypoint: >
       sh -c "
       chown -R postgres:postgres /var/log/postgresql &&
-      chmod -R 700 /var/log/postgresql &&
+      chmod -R 755 /var/log/postgresql &&
       exec docker-entrypoint.sh postgres
       -c logging_collector=on
       -c log_directory=/var/log/postgresql

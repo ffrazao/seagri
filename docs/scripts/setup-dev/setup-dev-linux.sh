@@ -21,7 +21,7 @@ mkcert -install
 # 4. Geração dos certificados do projeto
 echo "[4/4] Gerando certificados SSL para o Nginx..."
 mkdir -p nginx/certs
-mkcert -key-file nginx/certs/localhost-key.pem -cert-file nginx/certs/localhost.pem localhost
+mkcert -key-file nginx/certs/ip-key.pem -cert-file nginx/certs/ip-cert.pem localhost 
 
 echo "✅ Configuração concluída! O ambiente está pronto para rodar com HTTPS."
 echo "Execute: docker compose --profile completo up -d --build"
