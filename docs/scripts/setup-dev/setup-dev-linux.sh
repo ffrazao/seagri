@@ -1,8 +1,8 @@
 #!/bin/bash
 # Script de configuração inicial do ambiente de desenvolvimento (Linux/Ubuntu)
-# Versão agnóstica a arquitetura (amd64 / arm64 / arm)
+# Versão agnóstica + IP da máquina
 
-set -e  # Para o script em caso de erro
+set -e
 
 echo "Iniciando configuração do ambiente de desenvolvimento local (HTTPS)..."
 
@@ -53,28 +53,53 @@ fi
 echo "[4/4] Instalando Autoridade Certificadora Local (CA)..."
 mkcert -install
 
-# ====================== 5. Certificados do projeto ======================
+# ====================== 5. Detecção de IP da máquina ======================
+echo "   Detectando IP principal da máquina..."
+
+# Métodos robustos para pegar o IP (prioridade: interface padrão)
+PRIMARY_IP=$(ip route get 1 2>/dev/null | awk '{print $7}' | head -n1)
+if [ -z "$PRIMARY_IP" ]; then
+    PRIMARY_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+fi
+
+if [ -n "$PRIMARY_IP" ]; then
+    echo "   → IP detectado: $PRIMARY_IP"
+    EXTRA_NAMES="$PRIMARY_IP"
+else
+    echo "   ⚠️  Não foi possível detectar o IP automaticamente"
+    EXTRA_NAMES=""
+fi
+
+# ====================== 6. Geração dos certificados ======================
 echo "   Gerando certificados SSL para o Nginx..."
 
-# Garante que o diretório existe e tem permissão do usuário atual
 CERT_DIR="nginx/certs"
 if [ -d "$CERT_DIR" ]; then
-    echo "   → Diretório $CERT_DIR já existe. Ajustando permissões..."
+    echo "   → Ajustando permissões do diretório $CERT_DIR..."
     sudo chown -R "$USER:$USER" "$CERT_DIR" 2>/dev/null || true
 else
     mkdir -p "$CERT_DIR"
 fi
 
-# Remove arquivos antigos com permissão errada (se existirem)
+# Remove arquivos antigos para evitar conflito
 rm -f "$CERT_DIR/ip-key.pem" "$CERT_DIR/ip-cert.pem" 2>/dev/null || true
 
-mkcert -key-file "$CERT_DIR/ip-key.pem" \
-       -cert-file "$CERT_DIR/ip-cert.pem" \
-       localhost
+# Gera o certificado com localhost + IP
+if [ -n "$EXTRA_NAMES" ]; then
+    mkcert -key-file "$CERT_DIR/ip-key.pem" \
+           -cert-file "$CERT_DIR/ip-cert.pem" \
+           localhost $EXTRA_NAMES
+else
+    mkcert -key-file "$CERT_DIR/ip-key.pem" \
+           -cert-file "$CERT_DIR/ip-cert.pem" \
+           localhost
+fi
 
 echo ""
 echo "✅ Configuração concluída com sucesso!"
 echo "   Certificados gerados em: $CERT_DIR"
+echo "   Nomes incluídos: localhost${EXTRA_NAMES:+, $EXTRA_NAMES}"
 echo ""
 echo "Execute:"
 echo "   docker compose --profile completo up -d --build"
+
