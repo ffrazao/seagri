@@ -1,6 +1,6 @@
 #!/bin/bash
 # Script de configuração inicial do ambiente de desenvolvimento (Linux/Ubuntu)
-# Versão agnóstica + IP da máquina
+# Suporte a IP interno + IP público via argumento
 
 set -e
 
@@ -11,95 +11,75 @@ echo "[1/4] Verificando dependências do sistema..."
 sudo apt update -qq
 sudo apt install -y libnss3-tools wget curl
 
-# ====================== 2. Detecção da arquitetura ======================
-echo "[2/4] Detectando arquitetura da máquina..."
+# ====================== 2. Arquitetura ======================
+echo "[2/4] Detectando arquitetura..."
 
 ARCH=$(uname -m)
 case $ARCH in
-    x86_64|amd64)
-        MKCERT_ARCH="amd64"
-        ;;
-    aarch64|arm64)
-        MKCERT_ARCH="arm64"
-        ;;
-    armv7l|armv6l|arm)
-        MKCERT_ARCH="arm"
-        ;;
-    *)
-        echo "❌ Arquitetura não suportada: $ARCH"
-        exit 1
-        ;;
+    x86_64|amd64)  MKCERT_ARCH="amd64" ;;
+    aarch64|arm64) MKCERT_ARCH="arm64" ;;
+    armv7l|arm)    MKCERT_ARCH="arm" ;;
+    *) echo "❌ Arquitetura não suportada: $ARCH"; exit 1 ;;
 esac
 
-echo "   → Arquitetura detectada: $ARCH → mkcert-$MKCERT_ARCH"
+echo "   → Arquitetura detectada: $ARCH"
 
-# ====================== 3. Instalação do mkcert ======================
+# ====================== 3. mkcert ======================
 echo "[3/4] Instalando mkcert..."
-
 MKCERT_URL="https://dl.filippo.io/mkcert/latest?for=linux/${MKCERT_ARCH}"
-
 wget -q --show-progress -O /tmp/mkcert "${MKCERT_URL}"
 chmod +x /tmp/mkcert
 sudo mv /tmp/mkcert /usr/local/bin/mkcert
 
-if command -v mkcert >/dev/null 2>&1; then
-    echo "   → mkcert instalado com sucesso ($(mkcert -version))"
-else
-    echo "❌ Falha ao instalar mkcert"
-    exit 1
-fi
+echo "   → mkcert instalado ($(mkcert -version))"
 
 # ====================== 4. CA Local ======================
-echo "[4/4] Instalando Autoridade Certificadora Local (CA)..."
+echo "[4/4] Instalando Autoridade Certificadora Local..."
 mkcert -install
 
-# ====================== 5. Detecção de IP da máquina ======================
-echo "   Detectando IP principal da máquina..."
+# ====================== 5. Detecção de IPs ======================
+echo "   Detectando IPs..."
 
-# Métodos robustos para pegar o IP (prioridade: interface padrão)
-PRIMARY_IP=$(ip route get 1 2>/dev/null | awk '{print $7}' | head -n1)
-if [ -z "$PRIMARY_IP" ]; then
-    PRIMARY_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
+INTERNAL_IP=$(ip route get 1 2>/dev/null | awk '{print $7}' | head -n1)
+if [ -z "$INTERNAL_IP" ]; then
+    INTERNAL_IP=$(hostname -I 2>/dev/null | awk '{print $1}')
 fi
 
-if [ -n "$PRIMARY_IP" ]; then
-    echo "   → IP detectado: $PRIMARY_IP"
-    EXTRA_NAMES="$PRIMARY_IP"
-else
-    echo "   ⚠️  Não foi possível detectar o IP automaticamente"
-    EXTRA_NAMES=""
+PUBLIC_IP="" 
+if command -v curl >/dev/null; then
+    PUBLIC_IP=$(curl -s --max-time 3 ifconfig.me || curl -s --max-time 3 icanhazip.com || true)
 fi
 
-# ====================== 6. Geração dos certificados ======================
-echo "   Gerando certificados SSL para o Nginx..."
+echo "   → IP Interno : ${INTERNAL_IP:-não detectado}"
+[ -n "$PUBLIC_IP" ] && echo "   → IP Público : $PUBLIC_IP"
+
+# ====================== 6. Nomes para o certificado ======================
+NAMES="localhost $INTERNAL_IP"
+
+# Permite passar IP público ou outros nomes como argumento
+if [ -n "$1" ]; then
+    echo "   → Adicionando nome extra: $1"
+    NAMES="$NAMES $1"
+elif [ -n "$PUBLIC_IP" ]; then
+    echo "   → (Dica: rode com './setup-dev-linux.sh SEU_IP_PUBLICO' para incluir IP externo)"
+fi
+
+# ====================== 7. Geração do certificado ======================
+echo "   Gerando certificados SSL..."
 
 CERT_DIR="nginx/certs"
-if [ -d "$CERT_DIR" ]; then
-    echo "   → Ajustando permissões do diretório $CERT_DIR..."
-    sudo chown -R "$USER:$USER" "$CERT_DIR" 2>/dev/null || true
-else
-    mkdir -p "$CERT_DIR"
-fi
-
-# Remove arquivos antigos para evitar conflito
+mkdir -p "$CERT_DIR"
+sudo chown -R "$USER:$USER" "$CERT_DIR" 2>/dev/null || true
 rm -f "$CERT_DIR/ip-key.pem" "$CERT_DIR/ip-cert.pem" 2>/dev/null || true
 
-# Gera o certificado com localhost + IP
-if [ -n "$EXTRA_NAMES" ]; then
-    mkcert -key-file "$CERT_DIR/ip-key.pem" \
-           -cert-file "$CERT_DIR/ip-cert.pem" \
-           localhost $EXTRA_NAMES
-else
-    mkcert -key-file "$CERT_DIR/ip-key.pem" \
-           -cert-file "$CERT_DIR/ip-cert.pem" \
-           localhost
-fi
+mkcert -key-file "$CERT_DIR/ip-key.pem" \
+       -cert-file "$CERT_DIR/ip-cert.pem" \
+       $NAMES
 
 echo ""
 echo "✅ Configuração concluída com sucesso!"
-echo "   Certificados gerados em: $CERT_DIR"
-echo "   Nomes incluídos: localhost${EXTRA_NAMES:+, $EXTRA_NAMES}"
+echo "   Nomes no certificado: $NAMES"
+echo "   Certificados em: $CERT_DIR"
 echo ""
 echo "Execute:"
 echo "   docker compose --profile completo up -d --build"
-
