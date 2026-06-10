@@ -214,21 +214,21 @@ services:
       - frontend_net
     restart: unless-stopped
 
-  proxy:
-    image: nginx:alpine
+proxy:
+    build: 
+      context: ./nginx
+      dockerfile: Dockerfile
     container_name: proxy_nginx
     profiles:
       - "completo"
-    env_file: # por segurança é melhor não expor variáveis de ambiente para o nginx, mas se necessário, pode ser descomentado
-    #   - .env
+    env_file:
       - .env.docker
     ports:
       - "80:80"
       - "443:443"
     volumes:
-      - ./nginx/conf/nginx.conf.template:/etc/nginx/nginx.conf.template:ro
       - ./nginx/logs:/var/log/nginx
-      - ./nginx/certs:/etc/nginx/certs:ro # Mapeia a pasta dos certificados
+      - ./nginx/certs:/etc/nginx/certs:ro # Certificados mapeados como somente leitura
     networks:
       - frontend_net
       - backend_net
@@ -236,4 +236,3 @@ services:
       - backend
       - frontend-web
     restart: unless-stopped
-    command: /bin/sh -c "envsubst '\$APP_DOMAIN \$APP_URL \$APP_PROTOCOL' < /etc/nginx/nginx.conf.template > /etc/nginx/nginx.conf && nginx -g 'daemon off;'"

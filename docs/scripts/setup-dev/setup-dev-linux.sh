@@ -68,6 +68,12 @@ mkcert -key-file "$CERT_DIR/ip-key.pem" \
        -cert-file "$CERT_DIR/ip-cert.pem" \
        $NAMES
 
+# ====================== 8. Ajuste de Permissões ======================
+echo "   Ajustando permissões para o Docker..."
+# Executado sem sudo para manter o seu usuário como dono dos arquivos (.pem/.key)
+chmod 755 "$CERT_DIR"
+chmod 644 "$CERT_DIR"/*
+
 echo ""
 echo "✅ Configuração concluída com sucesso!"
 echo "   Nomes incluídos → $NAMES"
